@@ -148,4 +148,13 @@ they are not evidence of a real Java 25 application migration. Keep version
 recommendations verified at use time against the primary sources linked from the
 skill references, rather than expanding a stale fixed-version catalog.
 
-Licensed under [Apache-2.0](LICENSE); external tools retain their own licenses.
+The self-contained [test corpus](testdata/README.md) includes eight locally
+maintained scenarios with a local checksum manifest for reproducible inputs.
+Regression tests run offline on disposable copies. Each case also defines
+semantic acceptance criteria for evaluating future skill abilities; those require
+real agent/build results. Optional JDK smoke tests compile four standalone classes
+without dependency downloads. Corpus data stays outside the installable skill.
+
+Original project content is licensed under [Apache-2.0](LICENSE). The existing
+[fixture content's license status](testdata/README.md#fixture-license-status)
+remains unspecified; external tools retain their own licenses.

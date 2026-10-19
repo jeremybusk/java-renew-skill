@@ -1,0 +1,146 @@
+{
+  "schema_version": 1,
+  "cases": [
+    {
+      "id": "java8",
+      "path": "scenarios/java8",
+      "baseline_java": 8,
+      "build_files": {"pom.xml": "maven"},
+      "signals": [{"path": "pom.xml", "rule": "legacy-java-config"}],
+      "poms": {"pom.xml": {
+        "java_properties": {"maven.compiler.source": "1.8", "maven.compiler.target": "1.8"},
+        "coordinates": [{"kind": "dependency", "groupId": "org.junit.jupiter", "artifactId": "junit-jupiter", "version": "5.11.4", "scope": "test"}]
+      }},
+      "acceptance": [
+        "Identify Java 8 source/target settings and the explicitly declared JUnit Jupiter dependency.",
+        "Preserve the existing POM comment and unrelated formatting during execution.",
+        "Run GreetingTest through a compatible test provider; zero discovered tests must not count as success.",
+        "Verify the selected compiler release, actual classfile major, and target-runtime behavior."
+      ]
+    },
+    {
+      "id": "reactor",
+      "path": "scenarios/reactor",
+      "baseline_java": 8,
+      "build_files": {"pom.xml": "maven", "app/pom.xml": "maven"},
+      "signals": [
+        {"path": "pom.xml", "rule": "legacy-java-config"},
+        {"path": "pom.xml", "rule": "annotation-processing"},
+        {"path": "app/pom.xml", "rule": "annotation-processing"}
+      ],
+      "poms": {
+        "pom.xml": {"modules": ["app"], "coordinates": [
+          {"kind": "dependency", "groupId": "org.junit.jupiter", "artifactId": "junit-jupiter", "version": "${junit.version}"},
+          {"kind": "dependency", "groupId": "org.projectlombok", "artifactId": "lombok", "version": "${lombok.version}"}
+        ]},
+        "app/pom.xml": {"coordinates": [
+          {"kind": "parent", "groupId": "internal.example", "artifactId": "reactor-parent", "version": "1.0.0"},
+          {"kind": "dependency", "groupId": "org.projectlombok", "artifactId": "lombok", "version": "", "scope": "provided"}
+        ]}
+      },
+      "acceptance": [
+        "Change parent-owned JUnit/Lombok version properties rather than introducing child dependency versions.",
+        "Preserve the inherited ${lombok.version} annotationProcessorPaths expression.",
+        "Select and verify a processor version compatible with the actual compiler JDK.",
+        "Build the complete reactor and run PersonTest against a freshly generated Lombok getter."
+      ]
+    },
+    {
+      "id": "maven-bom",
+      "path": "scenarios/maven-bom",
+      "baseline_java": 8,
+      "build_files": {"pom.xml": "maven"},
+      "signals": [],
+      "poms": {"pom.xml": {"coordinates": [
+        {"kind": "dependency", "groupId": "org.junit", "artifactId": "junit-bom", "version": "5.11.4", "scope": "import", "type": "pom"},
+        {"kind": "dependency", "groupId": "org.junit.jupiter", "artifactId": "junit-jupiter", "version": "", "scope": "test"}
+      ]}},
+      "acceptance": [
+        "Identify the imported external BOM as the version owner; do not guess effective versions from the versionless dependency.",
+        "Resolve the effective model when repositories are available and preserve BOM ownership when upgrading.",
+        "Explain that the fixture does not declare a compiler level or prove an observed baseline runtime.",
+        "Configure compatible compilation/test tooling and demonstrate SmokeTest actually runs."
+      ]
+    },
+    {
+      "id": "gradle-groovy",
+      "path": "scenarios/gradle-groovy",
+      "baseline_java": 8,
+      "build_files": {"build.gradle": "gradle", "settings.gradle": "gradle"},
+      "signals": [
+        {"path": "build.gradle", "rule": "legacy-java-config"},
+        {"path": "build.gradle", "rule": "bytecode-tooling"}
+      ],
+      "poms": {},
+      "acceptance": [
+        "Identify Groovy DSL, Java 8 compatibility, JUnit 4 and JaCoCo as separate migration constraints.",
+        "Preserve test discovery with useJUnit or an explicitly justified compatible migration.",
+        "Select compatible Gradle launcher/toolchain/plugin versions, and update JaCoCo for emitted classfiles.",
+        "Recognize that no wrapper is supplied; obtain or generate trusted compatible build infrastructure explicitly."
+      ]
+    },
+    {
+      "id": "gradle-kotlin",
+      "path": "scenarios/gradle-kotlin",
+      "baseline_java": 17,
+      "build_files": {"build.gradle.kts": "gradle", "settings.gradle.kts": "gradle", "app/build.gradle.kts": "gradle"},
+      "signals": [],
+      "poms": {},
+      "acceptance": [
+        "Discover the app subproject and gradle/libs.versions.toml even though no Maven descriptors exist.",
+        "Update the JUnit version in its catalog owner rather than replacing libs.junit with a hard-coded coordinate.",
+        "Distinguish Kotlin build-script DSL from Kotlin application source; do not introduce an unnecessary Kotlin compiler upgrade.",
+        "Recognize the Java 17 toolchain declaration and absent wrapper; verify launcher and emitted bytecode separately."
+      ]
+    },
+    {
+      "id": "boot-context",
+      "path": "scenarios/boot-context",
+      "baseline_java": 17,
+      "build_files": {"pom.xml": "maven"},
+      "signals": [{"path": "pom.xml", "rule": "dependency-platform"}],
+      "poms": {"pom.xml": {
+        "java_properties": {"java.version": "17"},
+        "coordinates": [{"kind": "parent", "groupId": "org.springframework.boot", "artifactId": "spring-boot-starter-parent", "version": "3.5.16"}]
+      }},
+      "acceptance": [
+        "Verify the exact Boot line's Java 25 compatibility and support status using current primary documentation.",
+        "Do not require a Boot 4 upgrade solely because the runtime target is Java 25.",
+        "Preserve platform-managed dependency versions and run ContextTest to prove actual non-web context startup.",
+        "If a framework major upgrade is requested, assess its additional API, test and serialization changes separately."
+      ]
+    },
+    {
+      "id": "source-recipe",
+      "path": "scenarios/source-recipe",
+      "baseline_java": 17,
+      "build_files": {"pom.xml": "maven"},
+      "signals": [],
+      "poms": {"pom.xml": {"java_properties": {"maven.compiler.release": "17"}}},
+      "acceptance": [
+        "Treat String.format as valid existing code; changing the runtime alone does not require a formatting API rewrite.",
+        "Retain release 17 when requested, even if deployment and tests use Java 25.",
+        "Use a type-aware change only when the requested source migration needs one, and verify behavior.",
+        "Report that this fixture has no tests; compilation alone is not evidence of unit-test coverage."
+      ]
+    },
+    {
+      "id": "jetty9",
+      "path": "scenarios/jetty9",
+      "baseline_java": 21,
+      "build_files": {},
+      "signals": [
+        {"path": "src/main/java/example/HealthServlet.java", "rule": "jakarta-boundary"},
+        {"path": "src/main/java/example/EchoEndpoint.java", "rule": "jakarta-boundary"}
+      ],
+      "poms": {},
+      "acceptance": [
+        "Identify Servlet and WebSocket javax namespaces and the Java 21-specific runtime probe response.",
+        "Recognize this as a partial fixture with no build descriptor or vendored Jetty dependencies; do not fabricate a successful build.",
+        "Assess annotation scanner/ASM classfile compatibility separately from application compilation.",
+        "Avoid blanket javax replacement or claiming an ASM change alone certifies the entire server on Java 25.",
+        "When a full runtime harness is supplied, start the context and verify the in-memory health HTTP response."
+      ]
+    }
+  ]
+}

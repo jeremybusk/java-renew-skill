@@ -1,0 +1,33 @@
+{
+  "algorithm": "sha256",
+  "files": {
+    "boot-context/pom.xml": "53082856c766cef1e53ee7ad3536b4fd1f1fdaf8847f30d7016fd78f191c3b0b",
+    "boot-context/src/test/java/example/ContextTest.java": "ecc3ad49c39b74ce7ff600db03e83894edc705e0c1c1d6943bfe4b591c9a80fd",
+    "gradle-groovy/build.gradle": "d1dd1f9b8ac4e943abf62bf38e052ab6dd3ce6178c4391d655df9821574af306",
+    "gradle-groovy/settings.gradle": "7ec9b31dc173ba79730fe8def13763710f5161408c8f6c008efdaff041ad260a",
+    "gradle-groovy/src/main/java/example/Greeting.java": "43ad1bdce7e885306be25feb7365bbdcc2cc45fa7cdc00423321480ee73da1b0",
+    "gradle-groovy/src/test/java/example/SmokeTest.java": "78c6287f83da0c8d1f955744ad377ddf14543006b1d96ac94205ea270d38a463",
+    "gradle-kotlin/app/build.gradle.kts": "6f88c2088089aa87e2acb858b9dc643e7703fd6a2783fd309af46d5a9f24a664",
+    "gradle-kotlin/app/src/main/java/example/Greeting.java": "43ad1bdce7e885306be25feb7365bbdcc2cc45fa7cdc00423321480ee73da1b0",
+    "gradle-kotlin/app/src/test/java/example/SmokeTest.java": "78c6287f83da0c8d1f955744ad377ddf14543006b1d96ac94205ea270d38a463",
+    "gradle-kotlin/build.gradle.kts": "09e794adfb2b826aba0a6f05956a832e2d6606704dbba431c5a6579ce635b8da",
+    "gradle-kotlin/gradle/libs.versions.toml": "fd301ee11e466510703ead14dfa3b8e902852d8ebc051e8d17aeb28991e6aed6",
+    "gradle-kotlin/settings.gradle.kts": "702f0af6fd3f9fa0ea5016eca88842c2484cd767da1023d3bcd97cf09a2ed0f0",
+    "java8/pom.xml": "52a9803b3811476823586efa1a69620455a71a1e33128fdc7433445b6aa538c7",
+    "java8/src/main/java/example/Greeting.java": "4501146d94b824b24296465c289e0c486ca4ae6a6cff7b97497c83c2e7b46ec2",
+    "java8/src/test/java/example/GreetingTest.java": "a7a1900a70cf800e94400c810507c25d598dd83124b0e4c7c8da2a3266af31be",
+    "jetty9/JettyRuntimeProbe.java": "fd3fd99ccdf77128908da1999988b2bb37f39ca3205acbd46e51efba4c48d58a",
+    "jetty9/src/main/java/example/EchoEndpoint.java": "05144415c54a011dc69abc47ac3f2fdcda28763dcfa489030306949c1765fa84",
+    "jetty9/src/main/java/example/HealthServlet.java": "1f6f1f1912e1e8908a1f510e847554c47685e5ecd0a0589fa8615208ba096c05",
+    "jetty9/src/main/webapp/WEB-INF/web.xml": "85ef9ce7d411592442eff680ddf001061dd83a63bed63b9624a28432d4b6a1e3",
+    "maven-bom/pom.xml": "73be6013133c10ac4e8b98cc152461621e80bf3ee79a5e94d7f26e43d11c1a67",
+    "maven-bom/src/test/java/example/SmokeTest.java": "2adb49c155f99ae07f3a361600ae41177b5ab57cf24ef45150fc524b68fdb233",
+    "reactor/app/pom.xml": "f92ca3d688f1f266e6ca114c0c693ed144671b4e0a921f34c1defe7fbe99fd0b",
+    "reactor/app/src/main/java/example/Person.java": "965059700cb772ca6b1d30031a77f07b25a5e547cb66ad5918a53cfc8d8192df",
+    "reactor/app/src/test/java/example/PersonTest.java": "03f0584258bc3c81e2a652ab09c0ee05020a03ad79c834eb2f690945d2a69e41",
+    "reactor/pom.xml": "e08f08dc1a5f26e29336613ec03a05c6f1a67a88fb6caa3f745dda14be96bdca",
+    "source-recipe/pom.xml": "7e51bf8027f4e7c2cf67ebff6c9e94567b7a0bb7256889ead784d5a13d1a3cea",
+    "source-recipe/src/main/java/example/Greeting.java": "6da5d1cd02068fb73e854b8a13e006adde94b9111d85b3bd6310dd8d773a39de"
+  },
+  "schema_version": 1
+}

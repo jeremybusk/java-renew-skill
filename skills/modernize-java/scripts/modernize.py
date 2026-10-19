@@ -30,7 +30,7 @@ RULES = [
      "Test strong encapsulation; replace reflection before adding temporary module flags."),
     ("removed-javaee", "high", r"\bjavax\.(?:xml\.(?:bind|ws|soap)|activation|annotation(?!\.processing\b)|jws)\b|\borg\.omg\b",
      "Review modules removed from the JDK; select API and implementation matching the framework namespace."),
-    ("jakarta-boundary", "medium", r"\b(?:javax|jakarta)\.(?:servlet|persistence|validation|transaction(?!\.xa\b)|inject|enterprise|ws\.rs)\b",
+    ("jakarta-boundary", "medium", r"\b(?:javax|jakarta)\.(?:servlet|websocket|persistence|validation|transaction(?!\.xa\b)|inject|enterprise|ws\.rs)\b",
      "Align framework, application server, API, provider, and generated code namespaces."),
     ("security-manager", "high", r"\b(?:SecurityManager|setSecurityManager|AccessController)\b|java\.security\.manager",
      "Review reliance on the security sandbox; Security Manager is disabled in Java 24+."),
