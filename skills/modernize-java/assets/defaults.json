@@ -1,0 +1,18 @@
+{
+  "schema_version": 1,
+  "baseline_java": 8,
+  "target_java": 25,
+  "source_release": 25,
+  "framework_policy": "compatible",
+  "allow_preview": false,
+  "dependency_pins": {},
+  "scope": {
+    "include": ["**"],
+    "exclude": [],
+    "exclude_dirs": ["target", "build", ".gradle", "node_modules", "vendor", ".idea", ".venv"],
+    "max_file_bytes": 1048576,
+    "max_files": 50000
+  },
+  "required_gates": ["baseline", "build", "unit", "integration", "runtime", "dependencies", "security", "compatibility", "performance", "rollback"],
+  "waivers": []
+}
