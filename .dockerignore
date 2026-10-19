@@ -1,0 +1,15 @@
+.git
+.java-modernize
+.agents
+.codex
+.aws
+.venv
+.m2
+.gradle
+check-reports
+**/__pycache__
+**/*.pyc
+**/target
+**/build
+**/.env
+**/.env.*

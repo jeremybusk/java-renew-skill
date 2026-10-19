@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "maven": {
+    "version": "3.9.16",
+    "url": "https://archive.apache.org/dist/maven/maven-3/3.9.16/binaries/apache-maven-3.9.16-bin.tar.gz",
+    "sha512": "831a8591fe20c8243b1dbe7d71e3244f31d1665b0804b2e825e38cbbe5ce0cafb8338851f90780735568773e0a6cd07bbec107cda0b896b008b861075358b6f6"
+  },
+  "gradle8": {
+    "version": "8.14.6",
+    "url": "https://services.gradle.org/distributions/gradle-8.14.6-bin.zip",
+    "sha256": "7988ed071b2a07900e2ec715fca15c6ab72bce6db433af301fa7fa7e9407bd24"
+  },
+  "gradle9": {
+    "version": "9.8.2",
+    "url": "https://services.gradle.org/distributions/gradle-9.8.2-bin.zip",
+    "sha256": "21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607"
+  },
+  "fixtures": {
+    "spring_boot": "3.5.16",
+    "jacoco": "0.8.14"
+  }
+}

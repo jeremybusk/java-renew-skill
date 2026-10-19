@@ -136,6 +136,20 @@ See [validation details](skills/modernize-java/references/verification-and-rollo
 
 ## Maintain and test
 
+For a pinned Java/Maven/Gradle environment and the full automated build matrix:
+
+```bash
+docker compose up --build --abort-on-container-exit --exit-code-from checks
+docker compose cp checks:/reports/. ./check-reports
+```
+
+See [container usage](docker/README.md) for exact tool versions, JDK selection,
+offline reruns, report locations and single-image commands. It includes real
+Maven/Gradle smoke builds on Java 17, 21 and 25; AI-agent evaluations remain a
+separate workflow.
+
+For the Python tests directly:
+
 ```bash
 python3 -m unittest discover -s tests -v
 git diff --check

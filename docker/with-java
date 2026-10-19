@@ -1,0 +1,15 @@
+#!/bin/sh
+set -eu
+if [ "$#" -lt 2 ]; then
+    echo "Usage: with-java {8|11|17|21|25} command [args...]" >&2
+    exit 2
+fi
+case "$1" in
+    8|11|17|21|25) JAVA_HOME="/opt/jdks/$1" ;;
+    *) echo "Unsupported JDK: $1" >&2; exit 2 ;;
+esac
+shift
+export JAVA_HOME
+export MODERNIZE_JAVA_HOME="$JAVA_HOME"
+export PATH="$JAVA_HOME/bin:$PATH"
+exec "$@"

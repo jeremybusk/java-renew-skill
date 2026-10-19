@@ -1,0 +1,25 @@
+services:
+  checks:
+    image: modernize-java-checks:local
+    build: .
+    init: true
+    working_dir: /workspace
+    volumes:
+      - .:/workspace:ro
+      - maven-cache:/home/vscode/.m2
+      - gradle-cache:/home/vscode/.gradle
+      - check-reports:/reports
+    mem_limit: 4g
+    cpus: 2
+
+  offline:
+    extends:
+      service: checks
+    profiles: [offline]
+    network_mode: none
+    command: [python3, scripts/checks.py, --offline, --output, /reports/offline]
+
+volumes:
+  maven-cache:
+  gradle-cache:
+  check-reports:

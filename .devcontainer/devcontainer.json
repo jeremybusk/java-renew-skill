@@ -1,0 +1,6 @@
+{
+  "name": "Java modernization checks",
+  "build": {"dockerfile": "../Dockerfile", "context": ".."},
+  "remoteUser": "vscode",
+  "overrideCommand": true
+}
