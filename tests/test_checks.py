@@ -5,6 +5,7 @@ import contextlib
 import importlib.util
 import io
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -73,6 +74,21 @@ class CheckRunnerTests(unittest.TestCase):
         result = subprocess.run(["sh", str(ROOT / "docker/with-java"), "12", "java", "-version"],
                                 capture_output=True, text=True, timeout=10)
         self.assertEqual(result.returncode, 2)
+
+    def test_profile_restores_tool_paths_and_preserves_selected_jdk(self):
+        for selected in (None, "/opt/jdks/17"):
+            env = dict(os.environ)
+            env.pop("JAVA_HOME", None)
+            if selected:
+                env["JAVA_HOME"] = selected
+            code = "import os,json; print(json.dumps([os.environ['JAVA_HOME'],os.environ['PATH'].split(':')[:3]]))"
+            result = subprocess.run(["sh", "-c", '. "$1"; exec "$2" -c "$3"', "profile",
+                                     str(ROOT / "docker/java-profile.sh"), sys.executable, code],
+                                    env=env, capture_output=True, text=True, timeout=10)
+            self.assertEqual(result.returncode, 0, result.stderr)
+            home, paths = json.loads(result.stdout)
+            self.assertEqual(home, selected or "/opt/jdks/21")
+            self.assertEqual(paths, [home + "/bin", "/opt/tools/maven/bin", "/opt/tools/gradle8/bin"])
 
     def test_installation_rejects_hash_mismatch_and_zip_traversal(self):
         archive = self.work / "tool.zip"

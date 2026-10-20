@@ -148,6 +148,11 @@ offline reruns, report locations and single-image commands. It includes real
 Maven/Gradle smoke builds on Java 17, 21 and 25; AI-agent evaluations remain a
 separate workflow.
 
+For real agent trials across all eight fixtures, see the
+[skill evaluation runner](evaluations/README.md). It supports fresh sessions per
+phase, isolated inputs and independent build/ownership/evidence grading, with a
+Markdown scorecard separating task correctness from enterprise readiness.
+
 For the Python tests directly:
 
 ```bash

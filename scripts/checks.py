@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import shlex
 import shutil
 import subprocess
 import sys
@@ -123,6 +124,11 @@ def versions(output, timeout):
         if LOCK[name]["version"] not in (output / record["log"]).read_text():
             record.update(status="failed", detail="Tool version does not match docker/toolchains.lock.json")
         results.append(record)
+    script = ("import json,shutil,sys; tools=('java','javac','mvn','gradle','gradle8','gradle9','osv-scanner'); "
+              "found={tool:shutil.which(tool) for tool in tools}; print(json.dumps(found,indent=2)); "
+              "sys.exit(any(path is None for path in found.values()))")
+    results.append(run_command("login-shell-tools", ["bash", "-lc", "python3 -c " + shlex.quote(script)],
+                               output, env=environment(21), timeout=timeout))
     return results
 
 

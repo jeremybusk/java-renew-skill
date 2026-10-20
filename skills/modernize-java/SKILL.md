@@ -22,6 +22,8 @@ Read [phases and Markdown handoffs](references/phases.md) for stage inputs,
 canonical output paths, continuation rules, and the report renderer. A whole
 migration request runs all five stages. Each stage writes a concise Markdown
 report plus structured JSON, including blockers and a concrete next invocation.
+Keep a whole migration in one session when practical; fresh sessions are useful
+for resuming work and auditing handoff sufficiency, not required between stages.
 Execution completion means implementation is done; only validation establishes
 the tested result. Summary can describe either a verified or partial migration.
 

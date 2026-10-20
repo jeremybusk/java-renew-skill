@@ -1,0 +1,13 @@
+{
+  "schema_version": 1,
+  "tasks": {
+    "java8": "Upgrade this Maven project to the requested Java runtime and bytecode level. Preserve the existing comment, unrelated formatting, behavior and JUnit Jupiter tests. Resolve necessary build-tool compatibility issues and verify actual test discovery.",
+    "reactor": "Upgrade the complete Maven reactor to the requested Java runtime and bytecode level, including its Lombok annotation processor. Preserve parent-owned dependency versions and inherited processor configuration. Verify generated accessor behavior through the existing tests.",
+    "maven-bom": "Upgrade this Maven project to the requested Java runtime and bytecode level. Preserve external BOM ownership, resolve effective versions and establish usable compiler/test tooling. Distinguish evaluation baseline assumptions from settings actually declared by the project.",
+    "gradle-groovy": "Upgrade this Gradle project to the requested Java runtime and bytecode level. Preserve its existing JUnit framework and behavior, updating related build/coverage dependencies when necessary. Establish trusted build infrastructure if it is absent.",
+    "gradle-kotlin": "Upgrade all Gradle subprojects to the requested Java runtime and bytecode level. Update the old JUnit dependency to a compatible patch in its existing major line while preserving version-catalog ownership. Preserve application behavior and assess the build infrastructure supplied.",
+    "boot-context": "Upgrade this project to the requested Java runtime and bytecode level while retaining Spring Boot 3.5.x and its managed dependencies. Verify the existing context test. Assess the actual application and deployment coverage supplied by this fixture.",
+    "source-recipe": "Run this library on the requested target Java runtime while retaining Java 17 source/API/bytecode compatibility and existing formatting behavior. Make only necessary compatibility changes. Report the actual test coverage supplied.",
+    "jetty9": "Evaluate these servlet/WebSocket sources for the requested Java runtime. Work with the supplied build/deployment configuration; do not invent missing server versions or deployment requirements. Execute supported changes and validations, and explicitly identify any inputs needed to complete the migration."
+  }
+}

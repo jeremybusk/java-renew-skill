@@ -26,6 +26,7 @@ CI runs this same matrix and uploads the reports.
 The default run checks:
 
 - Installed versions of all five JDKs, Maven, both Gradle distributions and OSV-Scanner.
+- Tool discovery in login shells, including Java, javac, Maven and default Gradle.
 - All Python regression tests plus the four real compiler/behavior smoke cases.
 - Boot 3.5.16 clean Maven verification on JDK 17, 21 and 25.
 - Both Gradle fixture DSLs with real JUnit execution on JDK 17, 21 and 25.
@@ -155,6 +156,8 @@ The image contains the repository snapshot from build time, so it can run withou
 a host source mount. Rebuild after code changes. Use a named `/reports` volume
 if results must survive `docker run --rm`; Compose configures persistence already.
 `.devcontainer/devcontainer.json` reuses the same Dockerfile for an editor.
+The profile script restores Java/Maven/Gradle paths for agent/editor login shells
+and honors an explicitly selected `JAVA_HOME`, including `with-java 17 bash -lc ...`.
 
 Update pinned inputs deliberately: resolve new immutable image digests, obtain
 the matching published archive checksums, review compatibility, rebuild and run

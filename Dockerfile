@@ -31,6 +31,7 @@ RUN python3 /opt/modernize/install_tools.py \
     && mkdir -p /reports /home/vscode/.m2 /home/vscode/.gradle \
     && chown -R vscode:vscode /reports /home/vscode/.m2 /home/vscode/.gradle
 COPY --chmod=755 docker/with-java /usr/local/bin/with-java
+COPY --chmod=644 docker/java-profile.sh /etc/profile.d/zz-modernize-java.sh
 
 WORKDIR /workspace
 COPY --chown=vscode:vscode . /workspace

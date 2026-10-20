@@ -64,6 +64,11 @@ compiler toolchain to retain Java 8 bytecode.
 
 ## Test a skill ability
 
+Use the [evaluation runner](../evaluations/README.md) for repeatable isolated
+agent trials and independent grading. Its tasks, trials, transcripts and outcome
+checks follow the guidance in Anthropic's
+[Demystifying evals for AI agents](https://www.anthropic.com/engineering/demystifying-evals-for-ai-agents).
+
 `cases.json` separates automatic expectations (`build_files`, `signals`, `poms`)
 from semantic acceptance criteria (`acceptance`). The latter must be evaluated
 against actual agent behavior and build/runtime results; they are not claimed
