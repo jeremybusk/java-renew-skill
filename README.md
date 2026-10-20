@@ -1,6 +1,7 @@
-# Modernize Java
+# Java Renew
 
-A portable Java 8–25 modernization skill for coding agents. It handles build
+[Java Renew](https://github.com/jeremybusk/java-renew-skill) is a portable Java 8–25
+modernization skill for coding agents. It handles build
 toolchains, common dependencies/frameworks, Jakarta transitions, runtime changes,
 tests, deployment packaging, and evidence for enterprise review.
 
@@ -12,7 +13,7 @@ Defaults replace EOL components and remediate known vulnerabilities at every
 severity across application dependencies and related build/runtime resources.
 Necessary supported major upgrades are included; explicit targets/pins still
 apply. Unavailable fixes, incomplete coverage and conflicting pins remain blocked.
-See [remediation policy](skills/modernize-java/references/remediation.md).
+See [remediation policy](skills/java-renew/references/remediation.md).
 
 The package uses the open [Agent Skills format](https://agentskills.io/specification),
 JSON Schema 2020-12, and Apache-2.0 licensing. Optional helpers use only Python
@@ -21,27 +22,49 @@ installation is required.
 
 ## Use it
 
-Install the **entire** [skills/modernize-java](skills/modernize-java) directory in
-your agent's supported skill location. For repository-local discovery in clients
-that support it, copy it to `<your-project>/.agents/skills/modernize-java/`.
-For user-wide installations use the client's documented skill directory. Keep the
-folder name `modernize-java`, with `SKILL.md` directly inside it. The optional
+Install the **entire** [skills/java-renew](skills/java-renew) directory in
+your agent's supported skill location. Paths below are relative to the target
+project or your home directory; choose the scope you need. Keep the folder name
+`java-renew`, with `SKILL.md` directly inside it. The optional
 `agents/openai.yaml` adds UI metadata; other clients can ignore it.
 
-Open the target repository in the coding agent, then invoke:
+| Agent | Project installation | Personal installation | Explicit invocation |
+| --- | --- | --- | --- |
+| [Codex CLI / IDE](https://learn.chatgpt.com/docs/build-skills) | `.agents/skills/java-renew/` | `~/.agents/skills/java-renew/` | `$java-renew` |
+| [GitHub Copilot](https://docs.github.com/en/copilot/how-tos/copilot-on-github/customize-copilot/customize-cloud-agent/add-skills) | `.github/skills/java-renew/` | `~/.copilot/skills/java-renew/` | Ask to use `java-renew`; [Copilot CLI](https://docs.github.com/en/copilot/how-tos/copilot-cli/customize-copilot/add-skills) also supports `/java-renew` |
+| [Claude Code](https://code.claude.com/docs/en/skills) | `.claude/skills/java-renew/` | `~/.claude/skills/java-renew/` | `/java-renew` |
+
+Copilot also supports `.agents/skills/` and `.claude/skills/` for project skills.
+For other Agent Skills clients, use their documented discovery directory. An agent
+without native skill discovery can read the installed `java-renew/SKILL.md` and
+follow its linked resources when explicitly instructed.
+
+The agent needs access to project files and a shell for builds; helpers need
+Python 3.10+, and migrations need the appropriate JDKs/build tools plus approved
+access to dependencies and version/security sources. The host controls permissions.
+The skill uses the standard format without requiring a vendor SDK, MCP server,
+or tool pre-approval. The automated agent-evaluation adapter currently targets
+Codex CLI; live Copilot/Claude migrations are not verified by this repository's
+automated suite.
+
+Existing projects keep their `.java-modernize.json` policy and `.java-modernize/`
+reports. Those paths and the `scripts/modernize.py` helper remain compatible;
+invoke the renamed `java-renew` skill when continuing a migration.
+
+Open the target repository in the coding agent. Codex CLI / IDE examples:
 
 ```text
-Use $modernize-java assess this project for Java 8 to Java 25.
-Use $modernize-java plan from .java-modernize/01-assessment.md.
-Use $modernize-java execute .java-modernize/02-plan.md.
-Use $modernize-java validate from .java-modernize/03-execution.md.
-Use $modernize-java summary for this migration.
+Use $java-renew assess this project for Java 8 to Java 25.
+Use $java-renew plan from .java-modernize/01-assessment.md.
+Use $java-renew execute .java-modernize/02-plan.md.
+Use $java-renew validate from .java-modernize/03-execution.md.
+Use $java-renew summary for this migration.
 ```
 
 Or request the full workflow:
 
 ```text
-Use $modernize-java to upgrade this project from Java 8 to Java 25.
+Use $java-renew to upgrade this project from Java 8 to Java 25.
 Run assess, plan, execute, validate, and summary, saving the Markdown handoffs.
 ```
 
@@ -49,6 +72,9 @@ These are agent instructions, not shell commands. The agent performs the migrati
 and runs the project's compiler/tests. The helper provides deterministic policy,
 inventory, evidence checks, and report rendering; it does not rewrite Java or
 execute build/manifest commands by itself.
+For Claude Code or Copilot CLI, use `/java-renew` with the same phase/task. A
+client-neutral request is: "Use the java-renew skill to assess this project for
+Java 8 to Java 25." Generated handoffs use client-neutral continuation requests.
 
 ## Handoffs
 
@@ -63,21 +89,21 @@ execute build/manifest commands by itself.
 Matching `.json` files preserve decisions, sources, next steps and policy/source
 fingerprints. Validation additionally produces `evidence.json` and linked logs.
 Reports clearly distinguish implementation completion, verification, blockers and
-waivers. See the [phase contract](skills/modernize-java/references/phases.md).
+waivers. See the [phase contract](skills/java-renew/references/phases.md).
 Recorded blockers and empty/incomplete scans force a blocked report even when a
 handoff claims completion.
 
 ## Set target versions and overrides
 
 Use the target project's **`.java-modernize.json`** as the single target file.
-Copy the [project policy template](skills/modernize-java/assets/project-policy.example.json),
+Copy the [project policy template](skills/java-renew/assets/project-policy.example.json),
 then set Java target/release, framework policy, dependency/BOM pins, and optional
 `resource_targets` for Maven/Gradle, JDK roles, plugin IDs or image digests. Add a
 new named resource without changing code. Omitted pins allow supported secure
 versions to be selected during the migration; pinned conflicts are reported.
-The [policy reference](skills/modernize-java/references/configuration.md#set-target-versions-in-one-place)
+The [policy reference](skills/java-renew/references/configuration.md#set-target-versions-in-one-place)
 shows concrete examples. Skill-wide defaults are in
-[defaults.json](skills/modernize-java/assets/defaults.json); the check image has
+[defaults.json](skills/java-renew/assets/defaults.json); the check image has
 its own [toolchain lock](docker/toolchains.lock.json).
 
 Put shared constraints in that target file, then add
@@ -100,8 +126,8 @@ with Java/framework support is reported, never silently ignored. Save the resolv
 policy in `.java-modernize/policy.json` to carry per-use choices to the next stage.
 For report-only remediation or to prohibit automatic major changes, override
 `remediation`; doing so does not waive security/support acceptance checks.
-See [policy reference](skills/modernize-java/references/configuration.md) and
-[schema](skills/modernize-java/assets/config.schema.json).
+See [policy reference](skills/java-renew/references/configuration.md) and
+[schema](skills/java-renew/assets/config.schema.json).
 
 ## Helpers
 
@@ -157,7 +183,7 @@ The evidence gate checks self-declared results and artifact
 integrity, not test truth, signed provenance, or production certification. Real
 compiler/tests and trusted CI remain necessary. This repository supplies a
 reusable engineering workflow, not a vendor support contract or support SLA.
-See [validation details](skills/modernize-java/references/verification-and-rollout.md).
+See [validation details](skills/java-renew/references/verification-and-rollout.md).
 
 ## Maintain and test
 

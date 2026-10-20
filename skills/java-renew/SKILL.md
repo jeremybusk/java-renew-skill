@@ -1,5 +1,5 @@
 ---
-name: modernize-java
+name: java-renew
 description: Assess, plan, and implement Java 8 through Java 25 migrations, including Maven/Gradle builds, framework and dependency compatibility, Jakarta transitions, tests, containers, and runtime behavior. Use for Java upgrades or failed migrations; also supports libraries retaining an older bytecode baseline.
 license: Apache-2.0
 metadata:
@@ -7,7 +7,7 @@ metadata:
   runtime: "Optional helpers: Python 3.10+. Migration: project-appropriate JDKs and build tools."
 ---
 
-# Modernize Java
+# Java Renew
 
 Deliver a working, reviewable migration with evidence of what ran and what remains
 unverified. Default destination: Java 25 with supported components and remediation
@@ -16,6 +16,11 @@ EOL components; upgrade compatible patches first and supported majors when neede
 Modern syntax and architecture changes
 are separate choices. An assessment or plan request authorizes those deliverables,
 not implementation.
+
+Use the host's skill discovery and permission controls. Resolve `<skill>` in
+commands to this installed skill directory and `<project>` to the target project.
+Client invocation syntax varies; a plain request to use the `java-renew` skill
+works as a continuation instruction without assuming a particular client's UI.
 
 ## Establish the contract
 

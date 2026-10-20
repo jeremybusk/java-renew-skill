@@ -137,7 +137,7 @@ def versions(output, timeout):
 
 def fixture_build(case, major, output, offline, timeout):
     name = f"{case}-java{major}"
-    with tempfile.TemporaryDirectory(prefix="modernize-build-") as directory:
+    with tempfile.TemporaryDirectory(prefix="java-renew-build-") as directory:
         work = Path(directory) / case
         shutil.copytree(ROOT / "testdata/scenarios" / case, work)
         env = environment(major)

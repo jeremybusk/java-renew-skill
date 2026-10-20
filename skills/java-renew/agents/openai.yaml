@@ -1,0 +1,4 @@
+interface:
+  display_name: "Java Renew"
+  short_description: "Upgrade Java 8–25 with enterprise migration evidence"
+  default_prompt: "Use $java-renew to assess, plan, execute, validate, and summarize this project's Java 25 upgrade with Markdown handoffs."

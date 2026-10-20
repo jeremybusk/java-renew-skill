@@ -30,7 +30,7 @@ installer = module("installer", "docker/install_tools.py")
 
 class CheckRunnerTests(unittest.TestCase):
     def setUp(self):
-        temporary = tempfile.TemporaryDirectory(prefix="modernize-check-tests-")
+        temporary = tempfile.TemporaryDirectory(prefix="java-renew-check-tests-")
         self.addCleanup(temporary.cleanup)
         self.work = Path(temporary.name)
 

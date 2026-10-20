@@ -11,7 +11,7 @@ import tempfile
 import unittest
 from unittest import mock
 
-SKILL = Path(__file__).resolve().parents[1] / "skills" / "modernize-java"
+SKILL = Path(__file__).resolve().parents[1] / "skills" / "java-renew"
 SCRIPT = SKILL / "scripts" / "modernize.py"
 spec = importlib.util.spec_from_file_location("modernize", SCRIPT)
 m = importlib.util.module_from_spec(spec)
@@ -31,7 +31,7 @@ POM = '''<project xmlns="http://maven.apache.org/POM/4.0.0">
 
 class ProjectCase(unittest.TestCase):
     def setUp(self):
-        self.temp = tempfile.TemporaryDirectory(prefix="java-modernize-test-")
+        self.temp = tempfile.TemporaryDirectory(prefix="java-renew-test-")
         self.addCleanup(self.temp.cleanup)
         self.root = Path(self.temp.name)
         self.write("pom.xml", POM)
@@ -502,7 +502,7 @@ class ReportAndCliTests(ProjectCase):
             handoff = m.handoff_template(stage, self.snapshot(), self.policy)
             report, code = m.render_report(self.root, self.policy, handoff)
             self.assertEqual(code, 0)
-            self.assertIn(f"# Java modernization — {stage}", report)
+            self.assertIn(f"# Java Renew — {stage}", report)
             self.assertIn("## Next step", report)
             self.assertIn("## Handoff integrity", report)
         execution = m.handoff_template("execute", self.snapshot(), self.policy)
@@ -551,7 +551,7 @@ class ReportAndCliTests(ProjectCase):
         handoff = self.write_json(".java-modernize/01-assessment.json", json.loads(result.stdout))
         report = self.cli("report", "--handoff", str(handoff))
         self.assertEqual(report.returncode, 0, report.stderr)
-        self.assertTrue(report.stdout.startswith("# Java modernization"))
+        self.assertTrue(report.stdout.startswith("# Java Renew"))
         evidence = self.write_json(".java-modernize/evidence.json", m.evidence_template(self.snapshot(), self.policy))
         result = self.cli("gate", "--evidence", str(evidence))
         self.assertEqual(result.returncode, 1)

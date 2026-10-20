@@ -151,9 +151,9 @@ See the official [source scan](https://google.github.io/osv-scanner/usage/scan-s
 Compose is optional:
 
 ```bash
-docker build -t modernize-java-checks:local .
-docker run --rm modernize-java-checks:local
-docker run --rm modernize-java-checks:local with-java 17 java -version
+docker build -t java-renew-checks:local .
+docker run --rm java-renew-checks:local
+docker run --rm java-renew-checks:local with-java 17 java -version
 ```
 
 The image contains the repository snapshot from build time, so it can run without

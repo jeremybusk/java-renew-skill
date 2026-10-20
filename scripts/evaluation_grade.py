@@ -406,7 +406,7 @@ def grade_trial(output, trial, image, maven_cache):
 
 def scorecard(output, results):
     metadata = load(output / "run.json")
-    lines = ["# Java modernization skill evaluation", "",
+    lines = ["# Java Renew skill evaluation", "",
              f"Target: Java {metadata['target_java']}; mode: {metadata['mode']}; model: {metadata.get('model', 'not recorded')}.", "",
              f"Graded trials: {len(results)} of {len(metadata['trials'])} prepared trials.", "",
              "Evaluation correctness and production readiness are reported separately. Expected partial-input blockers can be correct outcomes.", "",

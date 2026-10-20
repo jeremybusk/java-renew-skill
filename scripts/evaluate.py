@@ -66,7 +66,7 @@ def prompt(case, stage, target, release, task):
     inputs = (f"Read .java-modernize/{STAGES[previous]}.md and its matching JSON before continuing. "
               "Preserve established decisions and use .java-modernize/policy.json as the final override."
               if previous else "Inspect the supplied project and capture an actual existing-runtime baseline where possible.")
-    return f"""Use the modernization skill at /skill/SKILL.md for the project in /work.
+    return f"""Use $java-renew at /skill/SKILL.md for the project in /work.
 
 User task: {task}
 Target runtime: Java {target}. Required source/API/bytecode release: {release}.
@@ -92,7 +92,7 @@ policy are implied. Do not commit, publish or inspect credentials.
 
 def prepare(output, selected, target, trials, mode):
     output.mkdir(parents=True, exist_ok=False)
-    shutil.copytree(ROOT / "skills/modernize-java", output / "skill")
+    shutil.copytree(ROOT / "skills/java-renew", output / "skill")
     (output / "harness").mkdir()
     shutil.copy2(Path(__file__), output / "harness/evaluate.py")
     shutil.copy2(ROOT / "evaluations/tasks.json", output / "harness/tasks.json")
@@ -151,7 +151,7 @@ def docker_base(image, work, maven_cache, gradle_cache):
 
 def invoke_agent(output, trial, stage, args):
     work = trial / "workspace"
-    name = "modernize-eval-" + uuid.uuid4().hex[:12]
+    name = "java-renew-eval-" + uuid.uuid4().hex[:12]
     command = docker_base(args.image, work, args.maven_cache, trial / "gradle-cache")
     command += ["--interactive", "--name", name, "--tmpfs", "/home/vscode/.codex:rw,uid=1000,gid=1000,mode=0700",
                 "--mount", f"type=bind,src={output / 'skill'},dst=/skill,readonly",
@@ -254,8 +254,8 @@ def main(argv=None):
     parser.add_argument("--target", type=int, choices=(21, 25), default=21)
     parser.add_argument("--trials", type=int, default=1)
     parser.add_argument("--mode", choices=("staged", "workflow"), default="workflow")
-    parser.add_argument("--image", default="modernize-java-checks:local")
-    parser.add_argument("--maven-cache", default="modernize-java-evaluation-maven")
+    parser.add_argument("--image", default="java-renew-checks:local")
+    parser.add_argument("--maven-cache", default="java-renew-evaluation-maven")
     parser.add_argument("--codex-bin-dir", type=Path)
     parser.add_argument("--auth-file", type=Path, default=Path.home() / ".codex/auth.json")
     parser.add_argument("--model")

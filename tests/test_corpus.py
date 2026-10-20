@@ -12,7 +12,7 @@ import unittest
 ROOT = Path(__file__).resolve().parents[1]
 DATA = ROOT / "testdata"
 SCENARIOS = DATA / "scenarios"
-spec = importlib.util.spec_from_file_location("modernize_corpus", ROOT / "skills/modernize-java/scripts/modernize.py")
+spec = importlib.util.spec_from_file_location("modernize_corpus", ROOT / "skills/java-renew/scripts/modernize.py")
 m = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(m)
 CASES = m.load_json(DATA / "cases.json")["cases"]
@@ -20,7 +20,7 @@ CASES = m.load_json(DATA / "cases.json")["cases"]
 
 class CorpusTests(unittest.TestCase):
     def workspace(self, case):
-        temporary = tempfile.TemporaryDirectory(prefix=f"modernize-corpus-{case['id']}-")
+        temporary = tempfile.TemporaryDirectory(prefix=f"java-renew-corpus-{case['id']}-")
         self.addCleanup(temporary.cleanup)
         root = Path(temporary.name) / "project"
         shutil.copytree(DATA / case["path"], root)
@@ -141,7 +141,7 @@ class JavaCompilerSmokeTests(unittest.TestCase):
                     ("gradle-kotlin/app", "Greeting.hello()", "hello", 17),
                     ("source-recipe", "Greeting.hello(\"Java\")", "Hello, Java", 17)]
         for fixture, call, expected, release in examples:
-            with self.subTest(fixture=fixture), tempfile.TemporaryDirectory(prefix="modernize-java-compile-") as directory:
+            with self.subTest(fixture=fixture), tempfile.TemporaryDirectory(prefix="java-renew-compile-") as directory:
                 work = Path(directory)
                 source = SCENARIOS / fixture / "src/main/java/example/Greeting.java"
                 driver = work / "FixtureCheck.java"

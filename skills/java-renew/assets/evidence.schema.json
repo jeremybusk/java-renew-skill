@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Java modernization evidence manifest",
+  "title": "Java Renew evidence manifest",
   "type": "object",
   "additionalProperties": false,
   "required": [

@@ -453,7 +453,7 @@ def check_evidence(root, policy, evidence):
 
 def handoff_template(stage, snapshot, policy):
     following = {"assess": "plan", "plan": "execute", "execute": "validate", "validate": "summary"}.get(stage)
-    next_step = (f"Use $modernize-java {following} for this project. Read "
+    next_step = (f"Use the java-renew skill to {following} this project. Read "
                  f".java-modernize/{STAGES[stage]}.md and its JSON handoff first; "
                  "use .java-modernize/policy.json as the final policy override."
                  if following else "Resolve any blockers and review the recorded scope, exceptions, and rollout/rollback procedure before release.")
@@ -477,7 +477,7 @@ def render_report(root, policy, handoff, evidence=None):
             handoff["blockers"]):
         status = "blocked"
     label = "complete with waivers" if status == "complete" and gate and gate["waivers"] else status
-    lines = [f"# Java modernization — {stage}", "", f"Status: **{label}**", "",
+    lines = [f"# Java Renew — {stage}", "", f"Status: **{label}**", "",
              f"Runtime: Java {policy['baseline_java']} → {policy['target_java']}; "
              f"default source/API release: {policy['source_release']}.", "", handoff["summary"], ""]
     if stage == "execute":

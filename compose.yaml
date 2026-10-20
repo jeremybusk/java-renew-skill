@@ -1,6 +1,6 @@
 services:
   checks:
-    image: modernize-java-checks:local
+    image: java-renew-checks:local
     build: .
     init: true
     working_dir: /workspace

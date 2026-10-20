@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Java modernization stage handoff",
+  "title": "Java Renew stage handoff",
   "type": "object", "additionalProperties": false,
   "required": ["schema_version", "stage", "status", "inventory_sha256", "policy_sha256", "summary", "versions", "findings", "decisions", "changes", "validation", "blockers", "next_steps"],
   "properties": {

@@ -6,14 +6,16 @@ policy/evidence, and renders reports; it is not an unattended Java rewrite engin
 Use the skill in any Agent Skills compatible coding agent with the project open:
 
 ```text
-Use $modernize-java assess this project for Java 8 to Java 25.
-Use $modernize-java plan from .java-modernize/01-assessment.md.
-Use $modernize-java execute .java-modernize/02-plan.md.
-Use $modernize-java validate from .java-modernize/03-execution.md.
-Use $modernize-java summary for this migration.
+Use the java-renew skill to assess this project for Java 8 to Java 25.
+Use the java-renew skill to plan from .java-modernize/01-assessment.md.
+Use the java-renew skill to execute .java-modernize/02-plan.md.
+Use the java-renew skill to validate from .java-modernize/03-execution.md.
+Use the java-renew skill to summarize this migration.
 ```
 
-Plain-language equivalents work. A request to do the whole migration runs all
+Codex CLI / IDE can explicitly mention `$java-renew`; Claude Code and Copilot CLI
+support `/java-renew`. Use the host client's installed skill selector when needed.
+A request to do the whole migration runs all
 five stages without requiring a fresh approval between stages. An explicit
 assessment/plan request ends after that deliverable. `summary` can be used at
 any time; report partial/blocked work honestly. If invoked directly for execution,

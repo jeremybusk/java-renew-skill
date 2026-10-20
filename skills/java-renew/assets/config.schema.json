@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "title": "Java modernization policy (partial layers allowed)",
+  "title": "Java Renew policy (partial layers allowed)",
   "type": "object",
   "additionalProperties": false,
   "properties": {

@@ -1,4 +1,4 @@
-# Evaluate the modernization skill
+# Evaluate Java Renew
 
 The repository has three complementary test layers:
 
@@ -32,7 +32,7 @@ The CLI reads the existing login from `~/.codex/auth.json`, or `--auth-file`.
 Use a model available to your account and record it explicitly.
 
 ```bash
-docker build -t modernize-java-checks:local .
+docker build -t java-renew-checks:local .
 python3 scripts/evaluate.py list
 python3 scripts/evaluate.py run \
   --output check-reports/evaluations/java21-trial \

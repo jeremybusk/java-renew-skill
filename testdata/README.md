@@ -2,7 +2,7 @@
 
 These projects are development inputs for this skill. They are stored in the
 same repository as the code/tests and are not downloaded during tests. Install
-only `skills/modernize-java` for ordinary skill use; keep this directory when
+only `skills/java-renew` for ordinary skill use; keep this directory when
 developing or evaluating the skill.
 
 `scenarios/` contains eight locally maintained fixture projects, about 10 KB
@@ -77,7 +77,7 @@ as passed by the Python tests.
 1. Copy the selected fixture to an isolated work directory. Never modify the
    originals under `testdata/scenarios`.
 2. Invoke the skill with a concrete task, target, and relevant overrides. For
-   example: `Use $modernize-java to assess, plan, execute, validate, and summarize
+   example: `Use $java-renew to assess, plan, execute, validate, and summarize
    this Maven reactor's Java 25 migration. Preserve parent-owned versions.`
 3. Review each Markdown/JSON handoff against the case's acceptance criteria.
    Assess/plan should leave product inputs unchanged. During execution, check
