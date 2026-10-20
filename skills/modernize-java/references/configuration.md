@@ -26,6 +26,50 @@ erase a merged map. To clear waivers or exclusions, replace the array with `[]`.
 Every layer is validated, including overridden values; typos cannot disappear
 silently. Do not store credentials in policy.
 
+## Set target versions in one place
+
+Use `<project>/.java-modernize.json` as the central target file; every helper
+loads it automatically. Start from [project-policy.example.json](../assets/project-policy.example.json).
+Set `target_java` and `source_release` here, Maven/framework/BOM pins in
+`dependency_pins`, and other resources in `resource_targets`. Add a resource by
+adding a named entry; no Python or schema changes are needed. Omit unused entries
+instead of introducing another build tool or framework.
+
+```json
+{
+  "target_java": 21,
+  "source_release": 17,
+  "dependency_pins": {
+    "org.springframework.boot:spring-boot-starter-parent": "3.5.16"
+  },
+  "resource_targets": {
+    "maven": {"kind": "tool", "selector": "Maven Wrapper and CI launcher", "version": "3.9.16"},
+    "gradle": {"kind": "tool", "selector": "Gradle Wrapper", "version": "8.14.6"},
+    "coverage": {"kind": "gradle-plugin", "selector": "org.example.coverage", "version": "1.2.3"}
+  }
+}
+```
+
+These are syntax examples, not current security/support approvals. Select actual
+versions using remediation research. Plugin selectors are literal plugin IDs;
+JDK selectors identify the compiler/test/deployment role and vendor. Image targets
+use `kind: "image"`, a selector such as `Dockerfile final FROM`, and a full image
+reference ending in `@sha256:<64 lowercase hex characters>`. Tool/JDK/plugin
+versions must be exact; moving aliases, snapshots and version ranges are rejected.
+Targets constrain the agent's edits; the offline helper does not install tools,
+rewrite manifests or verify their observed versions. Capture those in validation.
+
+Keep a managed artifact's version at its existing owner: use the BOM pin, not
+duplicate leaf pins. Conflicting selectors/pins and remediation needs are blockers
+to resolve, not permission to silently override them. Reconcile a changed target
+file with saved `policy.json` before continuing; a saved final override can retain
+old targets. Regenerate affected evidence after changing the effective policy.
+
+Skill-wide defaults live in [defaults.json](../assets/defaults.json). Repository
+check-image Maven/Gradle/scanner pins live in `docker/toolchains.lock.json`;
+JDK/base-image digests are Dockerfile build arguments. These configure the skill's
+test environment, separate from the target application's policy.
+
 ```json
 {
   "schema_version": 1,
@@ -49,12 +93,27 @@ when necessary, then run the artifact on Java 25.
 | `baseline_java` | Existing supported runtime, default 8; set the real baseline. |
 | `target_java` | Destination runtime, integer 8–25. Source and baseline cannot exceed it. |
 | `source_release` | Default compiler API/bytecode level, default 25; module exceptions must be documented. |
-| `framework_policy` | `preserve`: keep the current line, report incompatible constraints; `compatible`: minimum supported changes; `current-supported`: select an actively supported compatible line after checking policy. None means blindly choose the newest version. |
+| `framework_policy` | Default `current-supported`: retain a supported secure line or choose one when required. `preserve` constrains the current line; `compatible` limits framework compatibility changes. Remediation still applies; conflicting EOL/security constraints block acceptance. |
+| `remediation` | Default `eol: replace`, `vulnerabilities: fix`, `allow_major_upgrades: true`, `max_review_age_days: 1`. `report` for either action disables automatic fixes for that category, not the acceptance checks. All severities and unrated advisories are included. |
 | `allow_preview` | Default false. If true, source and target must match; prove packaging/runtime flags and exact release compatibility. |
 | `dependency_pins` | Exact `group:artifact` → version constraints; no snapshots, ranges, wildcards, property references, or moving aliases. Verify compatibility/security; conflicting pins are blockers, not permission to override a BOM silently. |
+| `resource_targets` | Named exact targets with `kind` (`tool`, `jdk`, `gradle-plugin`, `image`), literal `selector`, and `version`. New named entries need no code changes. Images require digest references. These are constraints, not proof of installation/support/security. |
 | `scope` | File triage limits and filters; does not define all deployment verification. |
 | `required_gates` | Named evidence checks; arrays replace. Defaults cover ten enterprise concerns. Removing checks narrows the claim and must appear in the report. Custom names work. |
 | `waivers` | Explicit owned, dated exceptions for required checks; never generated to bypass a failure without user authorization. |
+
+For a compatibility-only implementation that reports remediation work without
+making it, explicitly set:
+
+```json
+{
+  "framework_policy": "compatible",
+  "remediation": {"eol": "report", "vulnerabilities": "report", "allow_major_upgrades": false}
+}
+```
+
+Unresolved EOL/vulnerability findings and incomplete reviews still block their
+acceptance gates. See [remediation](remediation.md) for coverage and evidence.
 
 ## Scanner boundaries
 

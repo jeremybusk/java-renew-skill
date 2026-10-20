@@ -85,6 +85,12 @@ original fixture test assertions in a disposable build and adds a test-JVM guard
 Successful compilation with zero tests, skipped/failing tests, wrong bytecode or
 incorrect ownership cannot count as a normal fixture pass. `source-recipe` has no
 unit tests: its independent runtime behavior probe is reported separately.
+It also checks preservation of requested remediation rules and explicit targets.
+Execution may add selected versions to the central target file without changing
+user constraints. Workflow grading matches initial/final policy snapshots; use
+staged mode when auditing additional intermediate policy changes. New remediation
+evidence is evaluated against the frozen skill for that run; older results are
+not silently reinterpreted under a newer policy.
 
 The incomplete Jetty input is an expected-blocker case. Honest missing-input
 reporting can pass the evaluation while enterprise readiness remains blocked.

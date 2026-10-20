@@ -22,6 +22,7 @@ SUFFIXES = {".java", ".xml", ".gradle", ".kts", ".kt", ".groovy", ".scala", ".sb
 NAMES = {"Dockerfile", "Jenkinsfile", "Makefile", ".java-version", ".tool-versions", ".sdkmanrc"}
 STAGES = {"assess": "01-assessment", "plan": "02-plan", "execute": "03-execution",
           "validate": "04-validation", "summary": "05-summary"}
+REMEDIATION_SCOPES = ("runtime", "test", "build", "processors", "agents", "containers")
 # One finding per rule per file. These are review hints, never proof of incompatibility.
 RULES = [
     ("internal-api", "high", r"\b(?:sun\.misc|sun\.reflect|jdk\.internal|com\.sun\.(?:tools|image|xml\.internal))\b",
@@ -156,6 +157,15 @@ def resolve_policy(root, overrides):
         raise ValueError("source_release and baseline_java must not exceed target_java")
     if policy["allow_preview"] and policy["source_release"] != policy["target_java"]:
         raise ValueError("preview requires source_release equal to target_java")
+    for name, target in policy["resource_targets"].items():
+        if set(target) != {"kind", "selector", "version"}:
+            raise ValueError(f"resource_targets.{name}: kind, selector and version are required")
+        version = target["version"]
+        valid = (re.fullmatch(r"\S+@sha256:[0-9a-f]{64}", version) if target["kind"] == "image"
+                 else re.fullmatch(r"[0-9][0-9A-Za-z._+-]*", version) and
+                 "SNAPSHOT" not in version.upper() and not version.endswith(("+", ".", "-")))
+        if not valid:
+            raise ValueError(f"resource_targets.{name}: use an exact version or immutable image digest")
     seen = set()
     for waiver in policy["waivers"]:
         if waiver["gate"] not in policy["required_gates"] or waiver["gate"] in seen:
@@ -291,7 +301,71 @@ def evidence_template(snapshot, policy):
             "policy_sha256": digest(policy), "target_java": policy["target_java"],
             "checks": {gate: {"status": "not_run", "command": "",
                               "java_major": policy["baseline_java"] if gate == "baseline" else policy["target_java"],
-                              "summary": "", "artifacts": []} for gate in policy["required_gates"]}}
+                              "summary": "", "artifacts": []} for gate in policy["required_gates"]},
+            "remediation": {"reviews": {name: {
+                "status": "not_run", "checked_on": "", "summary": "", "artifacts": [],
+                "coverage": {scope: "incomplete" for scope in REMEDIATION_SCOPES}}
+                for name in ("support", "vulnerabilities")}, "findings": []}}
+
+
+def artifact_errors(root, artifacts, label):
+    errors = []
+    for artifact in artifacts:
+        relative = Path(artifact["path"])
+        path = root / relative
+        if relative.is_absolute() or ".." in relative.parts or not relative.parts:
+            errors.append(f"{label}: artifact path must be relative and contained")
+            continue
+        if any((root / Path(*relative.parts[:index])).is_symlink()
+               for index in range(1, len(relative.parts) + 1)):
+            errors.append(f"{label}: artifact symlink is unsupported")
+            continue
+        try:
+            if not stat.S_ISREG(path.stat().st_mode) or path.stat().st_size == 0:
+                raise ValueError("missing or empty artifact")
+            if file_digest(path) != artifact["sha256"]:
+                errors.append(f"{label}: artifact digest mismatch")
+        except (OSError, ValueError):
+            errors.append(f"{label}: artifact missing, empty, or non-regular")
+    return errors
+
+
+def remediation_errors(root, policy, evidence, gate, today):
+    ledger = evidence.get("remediation")
+    label = f"{gate}: remediation"
+    if ledger is None:
+        return [f"{label} review is missing"]
+    name, kind = ("support", "eol") if gate == "dependencies" else ("vulnerabilities", "vulnerability")
+    review = ledger["reviews"][name]
+    errors = []
+    coverage = review["coverage"]
+    if (review["status"] != "complete" or set(coverage) != set(REMEDIATION_SCOPES) or
+            any(status == "incomplete" for status in coverage.values()) or
+            not review["summary"].strip() or not review["artifacts"]):
+        errors.append(f"{label} {name} review/coverage is incomplete")
+    try:
+        date = dt.date.fromisoformat(review["checked_on"])
+        age = (today - date).days
+        if not re.fullmatch(r"\d{4}-\d{2}-\d{2}", review["checked_on"]) or not 0 <= age <= policy["remediation"]["max_review_age_days"]:
+            raise ValueError("stale or future date")
+    except ValueError:
+        errors.append(f"{label} {name} review date is missing, stale or in the future")
+    errors.extend(artifact_errors(root, review["artifacts"], label))
+    seen = set()
+    for finding in ledger["findings"]:
+        if finding["kind"] != kind:
+            continue
+        key = (finding["id"], finding["component"], finding["version"])
+        if key in seen:
+            errors.append(f"{label} duplicate finding {finding['id']}")
+        seen.add(key)
+        if finding["status"] == "open":
+            errors.append(f"{label} open {kind}: {finding['component']}@{finding['version']} ({finding['id']})")
+        elif (not finding["summary"].strip() or not finding["artifacts"] or
+              finding["status"] == "fixed" and not finding["replacement"].strip()):
+            errors.append(f"{label} {finding['id']} disposition needs summary, artifacts and a fixed replacement")
+        errors.extend(artifact_errors(root, finding["artifacts"], label))
+    return errors
 
 
 def check_evidence(root, policy, evidence):
@@ -328,24 +402,9 @@ def check_evidence(root, policy, evidence):
         expected = policy["baseline_java"] if gate == "baseline" else policy["target_java"]
         if check["java_major"] != expected:
             errors.append(f"{gate}: expected Java {expected} evidence")
-        for artifact in check["artifacts"]:
-            relative = Path(artifact["path"])
-            path = root / relative
-            # All artifacts are local, regular files under the root; no symlink traversal.
-            if relative.is_absolute() or ".." in relative.parts or not relative.parts:
-                errors.append(f"{gate}: artifact path must be relative and contained")
-                continue
-            if any((root / Path(*relative.parts[:index])).is_symlink()
-                   for index in range(1, len(relative.parts) + 1)):
-                errors.append(f"{gate}: artifact symlink is unsupported")
-                continue
-            try:
-                if not stat.S_ISREG(path.stat().st_mode) or path.stat().st_size == 0:
-                    raise ValueError("missing or empty artifact")
-                if file_digest(path) != artifact["sha256"]:
-                    errors.append(f"{gate}: artifact digest mismatch")
-            except (OSError, ValueError):
-                errors.append(f"{gate}: artifact missing, empty, or non-regular")
+        errors.extend(artifact_errors(root, check["artifacts"], gate))
+        if gate in {"dependencies", "security"}:
+            errors.extend(remediation_errors(root, policy, evidence, gate, today))
     return {"status": "blocked" if errors else "passed_with_waivers" if accepted_waivers else "passed",
             "errors": errors, "waivers": accepted_waivers,
             "inventory_sha256": current["inventory_sha256"],
@@ -415,6 +474,16 @@ def render_report(root, policy, handoff, evidence=None):
             lines.append(f"- Waiver: {item['gate']}; {item['owner']}; expires {item['expires']}; {item['ticket']}: {item['reason']}")
     else:
         lines.append("Not supplied. No claim of verified execution.")
+    if evidence and evidence.get("remediation"):
+        ledger = evidence["remediation"]
+        lines.extend(["", "## EOL and vulnerability remediation", ""])
+        for name, review in ledger["reviews"].items():
+            lines.append(f"- {name}: {review['status']}; checked {review['checked_on'] or 'not recorded'}.")
+        findings = ledger["findings"]
+        counts = {status: sum(item["status"] == status for item in findings) for status in ("open", "fixed", "not_affected")}
+        lines.append(f"- Findings: {counts['fixed']} fixed; {counts['open']} open; {counts['not_affected']} not affected. See the evidence manifest for dispositions and artifacts.")
+        for finding in [item for item in findings if item["status"] == "open"][:5]:
+            lines.append(f"- Open {cell(finding['kind'])}: {cell(finding['component'])}@{cell(finding['version'])}; {cell(finding['id'])}.")
     lines.extend(["", "Required gates: " + ", ".join(f"`{item}`" for item in policy["required_gates"]) + ".", "",
                   "The gate checks declared evidence and artifact integrity; review actual test results and release approvals.", ""])
     lines.extend(["## Handoff integrity", "", f"- Inventory: `{snapshot['inventory_sha256']}`",

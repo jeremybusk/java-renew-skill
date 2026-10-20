@@ -14,8 +14,8 @@ record explicit scoped exceptions rather than claiming those guarantees.
 | `unit` | Tests actually discovered and run, assertions, failures/errors/skips and coverage delta; compare with baseline and explain any decrease. |
 | `integration` | Relevant database, messaging, HTTP, identity and server integrations; production-like versions and disposable data. Capture test/container versions and profiles. |
 | `runtime` | Final packaged artifact/image starts on the exact target JDK with production-like flags, agents, native libraries, probes, resource limits and graceful termination. |
-| `dependencies` | Effective resolved dependency/plugin/processor/agent trees and compatibility matrix with exact versions and versioned primary sources; identify every unsupported combination and temporary bridge. |
-| `security` | Organization-approved SCA/container scan and license review, current advisory data, truststore/TLS/identity tests and no security downgrades. Produce an SBOM in CycloneDX or SPDX through existing approved tooling where available. An SBOM alone is not a vulnerability assessment. |
+| `dependencies` | Effective graphs and support matrix for runtime/test/tooling/processor/agent/container inputs, exact versions and dated primary sources. Complete the support review and close EOL findings with verified replacements or applicable support evidence. |
+| `security` | Complete advisory coverage and close known vulnerabilities at every severity, with final resolved artifact/image rescans. Retain organization SCA/container/license/TLS requirements. An SBOM alone is not a vulnerability assessment. |
 | `compatibility` | API/wire/database/serialization fixtures, reflection/native/module diagnostics and, for libraries, minimum-runtime consumer tests and ABI comparison. Document every lexical finding's disposition, including false positives. |
 | `performance` | Comparable baseline/target load with warmup, throughput, p95/p99 latency, errors, startup, CPU/RSS/heap/GC, resource limits and workload details. Apply the system's SLO/regression budget; do not invent a universal acceptable percentage. |
 | `rollback` | Previous immutable artifact/image retained; configuration, flags, truststore and schema compatibility assessed; controlled rollback rehearsal or verifiable procedure with triggers, owner and irreversibility limits. |
@@ -34,6 +34,14 @@ test engine must not silently strand the old tests.
 
 ## Evidence manifest
 
+Follow [remediation](remediation.md). Populate the template's structured support
+and vulnerability reviews, coverage and findings; keep unresolved findings open.
+The gate blocks declared dependency/security passes if their review is missing,
+stale/incomplete or has open findings. Recheck the final resolved versions and
+resource targets after fixes. A dated report with zero discovered packages does
+not establish advisory coverage; absent application dependencies do not remove
+the build launcher's/plugin graph from scope.
+
 ### Optional OSV dependency check
 
 When available and permitted, use `osv-scanner scan source -r <project>` as
@@ -41,8 +49,9 @@ additional dependency vulnerability evidence. Preserve JSON with `--format json
 --all-packages --output-file <report.json>`, actual exit status, diagnostics,
 scanner version, UTC scan date, discovered package coverage and advisory IDs.
 Findings, scanner/network errors and zero discovered packages are distinct results;
-never report any of these as a clean security pass. Review findings and remediation
-against the requested migration scope rather than silently changing the target.
+never report any of these as a clean security pass. Implement in-scope fixes per
+remediation policy; pins or unavailable fixes become explicit blockers. Keep the
+requested Java target and consumer baseline.
 
 Maven POM transitive resolution uses external services by default, can differ from
 the effective build and omits test dependencies. Compare its package set with the

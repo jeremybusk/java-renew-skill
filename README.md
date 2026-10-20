@@ -8,6 +8,12 @@ tests, deployment packaging, and evidence for enterprise review.
 Markdown and structured JSON that the next stage can consume. You can stop after
 any stage, resume in a new session, or request the entire migration.
 
+Defaults replace EOL components and remediate known vulnerabilities at every
+severity across application dependencies and related build/runtime resources.
+Necessary supported major upgrades are included; explicit targets/pins still
+apply. Unavailable fixes, incomplete coverage and conflicting pins remain blocked.
+See [remediation policy](skills/modernize-java/references/remediation.md).
+
 The package uses the open [Agent Skills format](https://agentskills.io/specification),
 JSON Schema 2020-12, and Apache-2.0 licensing. Optional helpers use only Python
 3.10+ standard libraries. No hosted service, paid recipe engine, or Python package
@@ -59,9 +65,20 @@ fingerprints. Validation additionally produces `evidence.json` and linked logs.
 Reports clearly distinguish implementation completion, verification, blockers and
 waivers. See the [phase contract](skills/modernize-java/references/phases.md).
 
-## Override each use
+## Set target versions and overrides
 
-Put shared constraints in the target project's `.java-modernize.json`, then add
+Use the target project's **`.java-modernize.json`** as the single target file.
+Copy the [project policy template](skills/modernize-java/assets/project-policy.example.json),
+then set Java target/release, framework policy, dependency/BOM pins, and optional
+`resource_targets` for Maven/Gradle, JDK roles, plugin IDs or image digests. Add a
+new named resource without changing code. Omitted pins allow supported secure
+versions to be selected during the migration; pinned conflicts are reported.
+The [policy reference](skills/modernize-java/references/configuration.md#set-target-versions-in-one-place)
+shows concrete examples. Skill-wide defaults are in
+[defaults.json](skills/modernize-java/assets/defaults.json); the check image has
+its own [toolchain lock](docker/toolchains.lock.json).
+
+Put shared constraints in that target file, then add
 explicit per-use JSON overrides. Example for a library that must keep Java 17
 APIs/bytecode while being tested on Java 25:
 
@@ -70,7 +87,7 @@ APIs/bytecode while being tested on Java 25:
   "baseline_java": 8,
   "target_java": 25,
   "source_release": 17,
-  "framework_policy": "compatible"
+  "framework_policy": "current-supported"
 }
 ```
 
@@ -79,6 +96,8 @@ Objects merge; arrays replace. Later overrides win. Exact dependency pins,
 scope filters, custom gates and owned, expiring waivers are supported. A conflict
 with Java/framework support is reported, never silently ignored. Save the resolved
 policy in `.java-modernize/policy.json` to carry per-use choices to the next stage.
+For report-only remediation or to prohibit automatic major changes, override
+`remediation`; doing so does not waive security/support acceptance checks.
 See [policy reference](skills/modernize-java/references/configuration.md) and
 [schema](skills/modernize-java/assets/config.schema.json).
 
@@ -104,7 +123,7 @@ when supplying override layers. During validation:
 ```bash
 python3 <skill>/scripts/modernize.py evidence-template --root . \
   > .java-modernize/evidence.json
-# Fill from real results, command/JDK details and hashes of reviewed artifacts.
+# Fill checks, remediation reviews/findings, real commands and artifact hashes.
 python3 <skill>/scripts/modernize.py gate --root . \
   --evidence .java-modernize/evidence.json
 python3 <skill>/scripts/modernize.py report --root . \

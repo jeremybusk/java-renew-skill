@@ -3,15 +3,17 @@ name: modernize-java
 description: Assess, plan, and implement Java 8 through Java 25 migrations, including Maven/Gradle builds, framework and dependency compatibility, Jakarta transitions, tests, containers, and runtime behavior. Use for Java upgrades or failed migrations; also supports libraries retaining an older bytecode baseline.
 license: Apache-2.0
 metadata:
-  version: "1.0.0"
+  version: "1.1.0"
   runtime: "Optional helpers: Python 3.10+. Migration: project-appropriate JDKs and build tools."
 ---
 
 # Modernize Java
 
 Deliver a working, reviewable migration with evidence of what ran and what remains
-unverified. Default destination: Java 25, with only the framework/dependency changes
-needed to reach a supported combination. Modern syntax and architecture changes
+unverified. Default destination: Java 25 with supported components and remediation
+of known vulnerabilities at every severity, including unrated advisories. Replace
+EOL components; upgrade compatible patches first and supported majors when needed.
+Modern syntax and architecture changes
 are separate choices. An assessment or plan request authorizes those deliverables,
 not implementation.
 
@@ -36,6 +38,10 @@ the tested result. Summary can describe either a verified or partial migration.
    [configuration](references/configuration.md) for precedence, pinning, and waivers.
    Never silently relax a failing gate. Existing authorization is sufficient for
    ordinary implementation; a plan is not an additional approval ceremony.
+   Keep application version targets in `<project>/.java-modernize.json`: Java
+   target/release, `dependency_pins` for BOMs/artifacts, and extensible
+   `resource_targets` for tools, JDK roles, plugins and images. Start from
+   [the project policy template](assets/project-policy.example.json).
 3. Distinguish **build launcher JDK**, **compiler JDK**, **source/API/bytecode
    release**, **test JVM**, and **deployment JVM**, per module. Defaults need not
    match library consumer constraints. Record vendor, patch, OS, architecture,
@@ -74,6 +80,13 @@ continue independent work; do not manufacture a successful baseline.
   the organization's support/security policy. Record source URLs, access date,
   resolved coordinates, BOM owner, Java range, and rationale. A version being
   downloadable or compiling is insufficient evidence of vendor support.
+- Apply [remediation policy](references/remediation.md) across direct/transitive
+  runtime/test dependencies, build tooling, processors, agents and project-owned
+  deployment images. Assess/plan record findings and proposed fixes; execute
+  implements them by default, including necessary major/API changes. Honor pins,
+  preservation/scope overrides and target Java; conflicting, unavailable or
+  unverified fixes remain blockers. Do not stop at reporting a fixable in-scope
+  finding. Validate fixes with clean tests and a rescan of final resolved inputs.
 - Read [builds and recipes](references/build-and-recipes.md) for toolchain setup
   and transformations. Upgrade the wrapper/plugins on a JVM they can run on;
   separate launcher and compiler JDKs where the compatibility intersection

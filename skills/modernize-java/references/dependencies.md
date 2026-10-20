@@ -9,6 +9,12 @@ prove a customer's entitlement.
 
 ## Version selection
 
+Apply [default remediation](remediation.md): replace EOL components and implement
+known vulnerability fixes, including necessary supported majors, during execute.
+Reporting alone is insufficient when an in-scope compatible fix is available.
+Use the central project target file described in [configuration](configuration.md)
+for explicit constraints; never overwrite a conflicting target silently.
+
 1. Obtain the effective Maven dependency/plugin trees or Gradle configurations
    for affected modules and active production/test profiles. Include parents,
    BOM imports, dependency management, catalogs, lockfiles, substitutions,

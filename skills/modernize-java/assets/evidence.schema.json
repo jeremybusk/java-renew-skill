@@ -1,31 +1,257 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "Java modernization evidence manifest",
-  "type": "object", "additionalProperties": false,
-  "required": ["schema_version", "inventory_sha256", "policy_sha256", "target_java", "checks"],
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "inventory_sha256",
+    "policy_sha256",
+    "target_java",
+    "checks"
+  ],
   "properties": {
-    "schema_version": {"type": "integer", "enum": [1]},
-    "inventory_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "policy_sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"},
-    "target_java": {"type": "integer", "minimum": 8, "maximum": 25},
+    "schema_version": {
+      "type": "integer",
+      "enum": [
+        1
+      ]
+    },
+    "inventory_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "policy_sha256": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "target_java": {
+      "type": "integer",
+      "minimum": 8,
+      "maximum": 25
+    },
     "checks": {
       "type": "object",
-      "propertyNames": {"pattern": "^[a-z][a-z0-9_-]*$"},
+      "propertyNames": {
+        "pattern": "^[a-z][a-z0-9_-]*$"
+      },
       "additionalProperties": {
-        "type": "object", "additionalProperties": false,
-        "required": ["status", "command", "java_major", "summary", "artifacts"],
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "status",
+          "command",
+          "java_major",
+          "summary",
+          "artifacts"
+        ],
         "properties": {
-          "status": {"type": "string", "enum": ["passed", "failed", "not_run", "waived"]},
-          "command": {"type": "string"},
-          "java_major": {"type": "integer", "minimum": 8, "maximum": 25},
-          "summary": {"type": "string"},
+          "status": {
+            "type": "string",
+            "enum": [
+              "passed",
+              "failed",
+              "not_run",
+              "waived"
+            ]
+          },
+          "command": {
+            "type": "string"
+          },
+          "java_major": {
+            "type": "integer",
+            "minimum": 8,
+            "maximum": 25
+          },
+          "summary": {
+            "type": "string"
+          },
           "artifacts": {
-            "type": "array", "uniqueItems": true,
+            "type": "array",
+            "uniqueItems": true,
             "items": {
-              "type": "object", "additionalProperties": false, "required": ["path", "sha256"],
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "path",
+                "sha256"
+              ],
               "properties": {
-                "path": {"type": "string", "minLength": 1},
-                "sha256": {"type": "string", "pattern": "^[0-9a-f]{64}$"}
+                "path": {
+                  "type": "string",
+                  "minLength": 1
+                },
+                "sha256": {
+                  "type": "string",
+                  "pattern": "^[0-9a-f]{64}$"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "remediation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "reviews",
+        "findings"
+      ],
+      "properties": {
+        "reviews": {
+          "type": "object",
+          "required": [
+            "support",
+            "vulnerabilities"
+          ],
+          "propertyNames": {
+            "enum": [
+              "support",
+              "vulnerabilities"
+            ]
+          },
+          "additionalProperties": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "status",
+              "checked_on",
+              "summary",
+              "coverage",
+              "artifacts"
+            ],
+            "properties": {
+              "status": {
+                "type": "string",
+                "enum": [
+                  "not_run",
+                  "incomplete",
+                  "complete"
+                ]
+              },
+              "checked_on": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "coverage": {
+                "type": "object",
+                "propertyNames": {
+                  "enum": [
+                    "runtime",
+                    "test",
+                    "build",
+                    "processors",
+                    "agents",
+                    "containers"
+                  ]
+                },
+                "additionalProperties": {
+                  "type": "string",
+                  "enum": [
+                    "complete",
+                    "incomplete",
+                    "not_applicable"
+                  ]
+                }
+              },
+              "artifacts": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "findings": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "id",
+              "kind",
+              "component",
+              "version",
+              "status",
+              "replacement",
+              "summary",
+              "artifacts"
+            ],
+            "properties": {
+              "id": {
+                "type": "string",
+                "minLength": 1
+              },
+              "component": {
+                "type": "string",
+                "minLength": 1
+              },
+              "version": {
+                "type": "string",
+                "minLength": 1
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "eol",
+                  "vulnerability"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "open",
+                  "fixed",
+                  "not_affected"
+                ]
+              },
+              "replacement": {
+                "type": "string"
+              },
+              "summary": {
+                "type": "string"
+              },
+              "artifacts": {
+                "type": "array",
+                "uniqueItems": true,
+                "items": {
+                  "type": "object",
+                  "additionalProperties": false,
+                  "required": [
+                    "path",
+                    "sha256"
+                  ],
+                  "properties": {
+                    "path": {
+                      "type": "string",
+                      "minLength": 1
+                    },
+                    "sha256": {
+                      "type": "string",
+                      "pattern": "^[0-9a-f]{64}$"
+                    }
+                  }
+                }
               }
             }
           }

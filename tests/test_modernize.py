@@ -59,10 +59,60 @@ class ProjectCase(unittest.TestCase):
             check.update(status="passed", command="synthetic fixture command; not a Java migration",
                          summary="Synthetic fixture verifies evidence integrity only.",
                          artifacts=[{"path": ".java-modernize/test-results.log", "sha256": m.file_digest(artifact)}])
+        for review in evidence["remediation"]["reviews"].values():
+            review.update(status="complete", checked_on=dt.datetime.now(dt.timezone.utc).date().isoformat(),
+                          summary="Synthetic complete review; tests gate consistency only.",
+                          coverage={scope: "complete" for scope in m.REMEDIATION_SCOPES},
+                          artifacts=[{"path": ".java-modernize/test-results.log", "sha256": m.file_digest(artifact)}])
         return evidence
 
 
 class PolicyTests(ProjectCase):
+    def test_remediation_defaults_and_explicit_report_only_overrides(self):
+        self.assertEqual(self.policy["framework_policy"], "current-supported")
+        self.assertEqual(self.policy["remediation"], {"eol": "replace", "vulnerabilities": "fix",
+                         "allow_major_upgrades": True, "max_review_age_days": 1})
+        override = self.write_json(".java-modernize/override.json", {
+            "remediation": {"vulnerabilities": "report", "allow_major_upgrades": False}})
+        policy = m.resolve_policy(self.root, [override])
+        self.assertEqual(policy["remediation"]["vulnerabilities"], "report")
+        self.assertEqual(policy["remediation"]["eol"], "replace")
+        self.assertFalse(policy["remediation"]["allow_major_upgrades"])
+        for layer in ({"remediation": {"eol": "ignore"}}, {"remediation": {"unknown": True}},
+                      {"remediation": {"max_review_age_days": -1}},
+                      {"remediation": {"max_review_age_days": True}}):
+            with self.subTest(layer=layer), self.assertRaises(ValueError):
+                m.resolve_policy(self.root, [self.write_json(".java-modernize/bad.json", layer)])
+
+    def test_central_targets_extend_and_override_without_new_schema_fields(self):
+        template = m.load_json(SKILL / "assets/project-policy.example.json")
+        template["resource_targets"] = {
+            "custom_compiler": {"kind": "jdk", "selector": "compiler Temurin", "version": "21.0.12.1+1"},
+            "build_launcher": {"kind": "tool", "selector": "Maven Wrapper", "version": "3.9.16"},
+            "custom_plugin": {"kind": "gradle-plugin", "selector": "example.plugin", "version": "1.2.3"},
+            "runtime": {"kind": "image", "selector": "Dockerfile final FROM", "version": "example/image@sha256:" + "a" * 64}}
+        self.write_json(".java-modernize.json", template)
+        layer = self.write_json(".java-modernize/override.json", {
+            "target_java": 21, "source_release": 17,
+            "resource_targets": {"build_launcher": {"version": "3.9.17"}}})
+        policy = m.resolve_policy(self.root, [layer])
+        self.assertEqual((policy["target_java"], policy["source_release"]), (21, 17))
+        self.assertEqual(policy["resource_targets"]["build_launcher"],
+                         {"kind": "tool", "selector": "Maven Wrapper", "version": "3.9.17"})
+        self.assertEqual(policy["resource_targets"]["custom_plugin"], template["resource_targets"]["custom_plugin"])
+
+    def test_resource_targets_reject_incomplete_and_moving_versions(self):
+        for kind, version in (("tool", "LATEST"), ("tool", "1.+"), ("tool", "[1,2)"),
+                              ("tool", "1.0-SNAPSHOT"), ("image", "example/image:latest"),
+                              ("image", "example/image@sha256:bad")):
+            target = {"kind": kind, "selector": "explicit owner", "version": version}
+            layer = self.write_json(".java-modernize/bad.json", {"resource_targets": {"custom": target}})
+            with self.subTest(target=target), self.assertRaises(ValueError):
+                m.resolve_policy(self.root, [layer])
+        layer = self.write_json(".java-modernize/bad.json", {"resource_targets": {"custom": {"version": "1.0"}}})
+        with self.assertRaisesRegex(ValueError, "kind, selector and version"):
+            m.resolve_policy(self.root, [layer])
+
     def test_layer_order_recursive_maps_and_replaced_arrays(self):
         self.write_json(".java-modernize.json", {"source_release": 17,
             "dependency_pins": {"g:a": "1.0"}, "scope": {"exclude": ["old/**"]}})
@@ -194,6 +244,73 @@ class InventoryTests(ProjectCase):
 
 
 class EvidenceTests(ProjectCase):
+    def finding(self, kind="vulnerability", status="open"):
+        return {"id": "SYNTHETIC-ADVISORY", "kind": kind, "component": "example:legacy", "version": "1.0",
+                "status": status, "replacement": "", "summary": "Synthetic finding, not a real advisory.", "artifacts": []}
+
+    def test_open_eol_and_advisories_block_declared_passes_even_in_report_mode(self):
+        self.policy["remediation"].update(eol="report", vulnerabilities="report")
+        for kind, gate in (("eol", "dependencies"), ("vulnerability", "security")):
+            evidence = self.passing_evidence()
+            evidence["remediation"]["findings"].append(self.finding(kind))
+            result = m.check_evidence(self.root, self.policy, evidence)
+            with self.subTest(kind=kind):
+                self.assertEqual(result["status"], "blocked")
+                self.assertTrue(any(item.startswith(gate + ": remediation open") for item in result["errors"]))
+
+    def test_remediation_coverage_and_dates_cannot_be_replaced_by_a_clean_claim(self):
+        today = dt.datetime.now(dt.timezone.utc).date()
+        mutations = [lambda r: r.update(status="not_run"), lambda r: r["coverage"].pop("build"),
+                     lambda r: r["coverage"].update(processors="incomplete"),
+                     lambda r: r.update(checked_on=(today - dt.timedelta(days=2)).isoformat()),
+                     lambda r: r.update(checked_on=(today + dt.timedelta(days=1)).isoformat()),
+                     lambda r: r.update(checked_on="not-a-date"), lambda r: r.update(artifacts=[])]
+        for name in ("support", "vulnerabilities"):
+            for mutation in mutations:
+                evidence = self.passing_evidence()
+                mutation(evidence["remediation"]["reviews"][name])
+                with self.subTest(name=name, mutation=mutation):
+                    self.assertEqual(m.check_evidence(self.root, self.policy, evidence)["status"], "blocked")
+        evidence = self.passing_evidence()
+        evidence.pop("remediation")
+        self.assertEqual(m.check_evidence(self.root, self.policy, evidence)["status"], "blocked")
+
+    def test_fixed_and_not_affected_dispositions_require_retained_proof(self):
+        for status in ("fixed", "not_affected"):
+            evidence = self.passing_evidence()
+            finding = self.finding(status=status)
+            evidence["remediation"]["findings"].append(finding)
+            self.assertEqual(m.check_evidence(self.root, self.policy, evidence)["status"], "blocked")
+            finding["artifacts"] = [dict(item) for item in evidence["checks"]["security"]["artifacts"]]
+            if status == "fixed":
+                self.assertEqual(m.check_evidence(self.root, self.policy, evidence)["status"], "blocked")
+                finding["replacement"] = "example:replacement@2.0"
+            self.assertEqual(m.check_evidence(self.root, self.policy, evidence)["status"], "passed")
+            finding["artifacts"][0]["sha256"] = "0" * 64
+            self.assertEqual(m.check_evidence(self.root, self.policy, evidence)["status"], "blocked")
+
+    def test_remediation_artifacts_reject_traversal_and_duplicate_dispositions(self):
+        evidence = self.passing_evidence()
+        finding = self.finding(status="not_affected")
+        finding["artifacts"] = [dict(item) for item in evidence["checks"]["security"]["artifacts"]]
+        evidence["remediation"]["findings"] = [finding, dict(finding)]
+        self.assertTrue(any("duplicate finding" in item for item in m.check_evidence(self.root, self.policy, evidence)["errors"]))
+        evidence["remediation"]["findings"] = [finding]
+        finding["artifacts"][0]["path"] = "../outside.log"
+        self.assertTrue(any("relative and contained" in item for item in m.check_evidence(self.root, self.policy, evidence)["errors"]))
+
+    def test_explicit_waiver_remains_distinct_from_fixed_and_does_not_cover_other_gate(self):
+        self.policy["waivers"] = [{"gate": "dependencies", "owner": "test-owner", "reason": "synthetic exception",
+                                  "ticket": "TEST-1", "expires": dt.datetime.now(dt.timezone.utc).date().isoformat()}]
+        evidence = self.passing_evidence()
+        evidence["checks"]["dependencies"]["status"] = "waived"
+        evidence["remediation"]["findings"] = [self.finding("eol")]
+        self.assertEqual(m.check_evidence(self.root, self.policy, evidence)["status"], "passed_with_waivers")
+        report, _ = m.render_report(self.root, self.policy, m.handoff_template("summary", self.snapshot(), self.policy), evidence)
+        self.assertIn("0 fixed; 1 open", report)
+        evidence["remediation"]["findings"].append(self.finding("vulnerability"))
+        self.assertEqual(m.check_evidence(self.root, self.policy, evidence)["status"], "blocked")
+
     def test_real_local_artifact_hashes_and_required_checks_pass(self):
         evidence = self.passing_evidence()
         result = m.check_evidence(self.root, self.policy, evidence)

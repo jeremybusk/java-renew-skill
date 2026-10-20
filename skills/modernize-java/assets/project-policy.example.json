@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "baseline_java": 8,
+  "target_java": 25,
+  "source_release": 25,
+  "framework_policy": "current-supported",
+  "remediation": {
+    "eol": "replace",
+    "vulnerabilities": "fix",
+    "allow_major_upgrades": true,
+    "max_review_age_days": 1
+  },
+  "dependency_pins": {},
+  "resource_targets": {}
+}

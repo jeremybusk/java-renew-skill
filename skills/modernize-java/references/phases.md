@@ -38,6 +38,12 @@ and refer to them by path; keep one current file per stage. Use existing approve
 artifact storage when appropriate and retain local digest-bearing exports for
 the gate. Do not commit sensitive reports automatically.
 
+Every phase records EOL/advisory findings found, fixed and still open, including
+resource-target conflicts. Assess/plan propose fixes; execute implements available
+in-scope fixes, not merely a findings report. Validate rescans final resolved
+inputs and records structured remediation evidence. Summary reports remaining
+blockers and any authorized waivers without changing their status.
+
 ## Continue from a handoff
 
 Read the previous Markdown **and JSON**, effective policy, inventory and any

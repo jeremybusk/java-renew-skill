@@ -3,6 +3,7 @@
 import importlib.util
 import json
 from pathlib import Path
+import shutil
 import tempfile
 from types import SimpleNamespace
 import unittest
@@ -138,6 +139,60 @@ class EvaluationTests(unittest.TestCase):
             path.parent.mkdir(parents=True, exist_ok=True)
             path.write_bytes(b"\xca\xfe\xba\xbe\x00\x00\x00\x41")
         self.assertEqual(grader.project_classfiles(self.output), [project])
+
+    def test_workflow_accepts_generated_targets_but_rejects_weakened_user_constraints(self):
+        imports = mock.patch.dict("sys.modules", {"evaluate": evaluation})
+        imports.start()
+        self.addCleanup(imports.stop)
+        evaluation.prepare(self.output, ["maven-bom"], 21, 1, "workflow")
+        trial = self.output / "trials/maven-bom-01"
+        work = trial / "workspace"
+        spec = importlib.util.spec_from_file_location("frozen_helper", self.output / "skill/scripts/modernize.py")
+        helper = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(helper)
+        request_path = work / ".java-modernize/request-policy.json"
+        request = json.loads(request_path.read_text())
+        maven = {"kind": "tool", "selector": "Maven Wrapper", "version": "3.9.16"}
+        request["resource_targets"] = {"maven": maven}
+        evaluation.save(request_path, request)
+        initial = helper.resolve_policy(work, [request_path])
+        initial_snapshot = helper.inventory(work, initial)
+        generated = {"resource_targets": {"chosen_plugin": {
+            "kind": "gradle-plugin", "selector": "example.synthetic", "version": "1.0"}}}
+        evaluation.save(work / ".java-modernize.json", generated)
+        final = helper.resolve_policy(work, [request_path])
+        captured = trial / "captures/assess"
+        captured.mkdir()
+        shutil.copytree(work, captured / "product", ignore=shutil.ignore_patterns(*evaluation.EXCLUDED))
+        metadata = json.loads((trial / "trial.json").read_text())
+        metadata["phases"] = [{"phase": "assess", "exit_code": 0, "agent_errors": [],
+                               "product_after": evaluation.product_files(work)}]
+
+        def handoffs(policy):
+            evaluation.save(work / ".java-modernize/policy.json", policy)
+            evaluation.save(captured / "policy.json", policy)
+            for stage, stem in helper.STAGES.items():
+                original = stage in {"assess", "plan"}
+                phase_policy = initial if original else policy
+                snapshot = initial_snapshot if original else helper.inventory(work, policy)
+                evaluation.save(captured / (stem + ".json"), helper.handoff_template(stage, snapshot, phase_policy))
+                (captured / (stem + ".md")).write_text("Synthetic structured handoff for grader regression.")
+            evaluation.save(work / ".java-modernize/evidence.json", helper.evidence_template(helper.inventory(work, policy), policy))
+
+        handoffs(final)
+        checks = []
+        grader.handoff_checks(self.output, trial, metadata, checks)
+        self.assertTrue(all(item["status"] == "passed" for item in checks if item["id"].startswith("handoff-") or item["id"] == "policy-retained"), checks)
+        for field in ("resource_targets", "remediation"):
+            changed = json.loads(json.dumps(final))
+            if field == "resource_targets":
+                changed[field]["maven"]["version"] = "3.9.17"
+            else:
+                changed[field]["eol"] = "report"
+            handoffs(changed)
+            checks = []
+            grader.handoff_checks(self.output, trial, metadata, checks)
+            self.assertEqual(next(item["status"] for item in checks if item["id"] == "policy-retained"), "failed")
 
 
 if __name__ == "__main__":

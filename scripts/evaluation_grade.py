@@ -256,6 +256,7 @@ def handoff_checks(output, trial, metadata, checks):
     if final_policy.is_file():
         overrides.append(final_policy)
     default = helper.resolve_policy(work, overrides)
+    requested = helper.resolve_policy(output / "inputs" / metadata["case"], overrides[:1])
     required = helper.load_json(helper.ASSETS / "defaults.json")["required_gates"]
     policies = []
     for stage, stem in STAGES.items():
@@ -270,8 +271,13 @@ def handoff_checks(output, trial, metadata, checks):
                 detail = f"Canonical {stage} report satisfies the structured contract."
                 policy_path = captured / "policy.json"
                 if policy_path.is_file():
-                    phase_policy = load(policy_path)
-                    valid = valid and document["policy_sha256"] == helper.digest(phase_policy)
+                    candidates = [load(policy_path)]
+                    if metadata["mode"] == "workflow":
+                        candidates.append(requested)
+                    phase_policy = next((p for p in candidates if helper.digest(p) == document["policy_sha256"]), None)
+                    if phase_policy is None:
+                        raise ValueError("No retained initial/final policy matches this handoff; use staged mode for intermediate policy audits.")
+                    policies.append(phase_policy)
                     phase = next((item for item in metadata["phases"] if item["phase"] == stage), None)
                     source = captured / "product"
                     if metadata["mode"] == "workflow" and stage in {"assess", "plan"}:
@@ -288,16 +294,18 @@ def handoff_checks(output, trial, metadata, checks):
             except (OSError, ValueError, KeyError, TypeError) as error:
                 detail = str(error)
         check(checks, f"handoff-{stage}", valid, detail)
-        if (captured / "policy.json").is_file():
-            policies.append(load(captured / "policy.json"))
     for phase in metadata["phases"]:
         if metadata["mode"] == "staged" and phase["phase"] in {"assess", "plan"}:
             check(checks, f"{phase['phase']}-no-product-edits", phase["product_unchanged"], "Assess/plan leave product inputs unchanged.")
         check(checks, f"agent-{phase['phase']}", phase["exit_code"] == 0 and not phase["agent_errors"],
               f"Actual agent process exit {phase['exit_code']}; agent errors: {len(phase['agent_errors'])}.")
     check(checks, "policy-retained", len(policies) == len(STAGES) and all(p["target_java"] == metadata["target_java"] and
-          p["source_release"] == metadata["source_release"] and p["required_gates"] == required and not p["waivers"] for p in policies),
-          "Requested runtime/release and default enterprise gates are retained without waivers.")
+          p["source_release"] == metadata["source_release"] and p["required_gates"] == required and not p["waivers"] and
+          p["framework_policy"] == requested["framework_policy"] and
+          p.get("remediation") == requested.get("remediation") and
+          all(p.get(field, {}).get(name) == value for field in ("dependency_pins", "resource_targets")
+              for name, value in requested.get(field, {}).items()) for p in policies),
+          "Requested runtime/release, remediation/resource policy and default enterprise gates are retained without waivers.")
     evidence_path = work / ".java-modernize/evidence.json"
     enterprise = {"status": "not_recorded"}
     if metadata["case"] != "jetty9":

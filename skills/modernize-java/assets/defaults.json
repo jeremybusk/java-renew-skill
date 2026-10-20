@@ -3,16 +3,44 @@
   "baseline_java": 8,
   "target_java": 25,
   "source_release": 25,
-  "framework_policy": "compatible",
+  "framework_policy": "current-supported",
+  "remediation": {
+    "eol": "replace",
+    "vulnerabilities": "fix",
+    "allow_major_upgrades": true,
+    "max_review_age_days": 1
+  },
   "allow_preview": false,
   "dependency_pins": {},
   "scope": {
-    "include": ["**"],
+    "include": [
+      "**"
+    ],
     "exclude": [],
-    "exclude_dirs": ["target", "build", ".gradle", "node_modules", "vendor", ".idea", ".venv"],
+    "exclude_dirs": [
+      "target",
+      "build",
+      ".gradle",
+      "node_modules",
+      "vendor",
+      ".idea",
+      ".venv"
+    ],
     "max_file_bytes": 1048576,
     "max_files": 50000
   },
-  "required_gates": ["baseline", "build", "unit", "integration", "runtime", "dependencies", "security", "compatibility", "performance", "rollback"],
-  "waivers": []
+  "required_gates": [
+    "baseline",
+    "build",
+    "unit",
+    "integration",
+    "runtime",
+    "dependencies",
+    "security",
+    "compatibility",
+    "performance",
+    "rollback"
+  ],
+  "waivers": [],
+  "resource_targets": {}
 }
