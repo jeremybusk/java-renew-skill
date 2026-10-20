@@ -19,6 +19,13 @@ services:
     network_mode: none
     command: [python3, scripts/checks.py, --offline, --output, /reports/offline]
 
+  security:
+    extends:
+      service: checks
+    profiles: [security]
+    command: [python3, scripts/checks.py, --suite, security,
+              --scan-root, /workspace/testdata/scenarios, --output, /reports/security]
+
 volumes:
   maven-cache:
   gradle-cache:

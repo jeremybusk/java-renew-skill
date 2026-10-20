@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -91,6 +92,28 @@ class CheckRunnerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "unsafe archive path"):
             installer.install("gradle8", entry, self.work / "invalid")
         self.assertFalse((self.work / "outside").exists())
+
+    def test_security_scan_rejects_false_clean_results_and_preserves_findings(self):
+        raw = self.work / "osv-scan.json"
+        samples = [
+            ({"results": []}, "failed"),
+            ({"results": [{"packages": [{"package": {"name": "managed", "version": ""}}]}]}, "failed"),
+            ({"results": [{"packages": [{"package": {"name": "resolved", "version": "1"}}]}]}, "passed"),
+            ({"results": [{"packages": [{"package": {"name": "vulnerable", "version": "1"},
+                                           "vulnerabilities": [{"id": "TEST-1"}]}]}]}, "failed"),
+        ]
+        def run(*args, **kwargs):
+            raw.write_text(json.dumps(document))
+            return {"name": "osv-scan", "status": "passed", "exit_code": 0}
+        for document, status in samples:
+            with self.subTest(document=document), mock.patch.object(checks, "run_command", side_effect=run):
+                result = checks.security_scan(self.work, ROOT, None, False, 10)
+                self.assertEqual(result["status"], status)
+        raw.write_text('{"results": []}')
+        with mock.patch.object(checks, "run_command", return_value={"status": "failed", "exit_code": 127}):
+            result = checks.security_scan(self.work, ROOT, None, False, 10)
+        self.assertFalse(raw.exists(), "A failed scan must not reuse an old report")
+        self.assertEqual(result["status"], "failed")
 
 
 if __name__ == "__main__":

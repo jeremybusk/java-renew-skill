@@ -25,7 +25,7 @@ CI runs this same matrix and uploads the reports.
 
 The default run checks:
 
-- Installed versions of all five JDKs, Maven and both Gradle distributions.
+- Installed versions of all five JDKs, Maven, both Gradle distributions and OSV-Scanner.
 - All Python regression tests plus the four real compiler/behavior smoke cases.
 - Boot 3.5.16 clean Maven verification on JDK 17, 21 and 25.
 - Both Gradle fixture DSLs with real JUnit execution on JDK 17, 21 and 25.
@@ -47,6 +47,7 @@ command does not claim complete live builds for the partial Jetty fixture.
 | Maven | 3.9.16; verified SHA-512. |
 | `gradle` / `gradle8` | 8.14.6; verified SHA-256. Used for Java 17/21 fixture builds. |
 | `gradle9` | 9.8.2; verified SHA-256. Used for Java 25 fixture builds. |
+| OSV-Scanner | 2.7.0; architecture-specific release binary, verified SHA-256. |
 
 [Dockerfile](../Dockerfile) pins the base/JDK image indexes and
 [toolchains.lock.json](toolchains.lock.json) pins tool archives and fixture smoke
@@ -89,6 +90,56 @@ and writes its separate reports under `/reports/offline`. CI verifies this after
 the initial online run.
 Project dependency provenance and current advisory/security checks are separate
 from pinning the development toolchain.
+
+## Optional dependency vulnerability scan
+
+OSV-Scanner is installed in the image. Run it explicitly against the project being
+migrated; its network-dependent findings do not belong in deterministic fixture
+regression results. The corpus intentionally includes old dependencies.
+
+```bash
+# Scan the complete corpus; findings produce a nonzero exit.
+docker compose --profile security run --rm security
+# Scan one fixture and reject missing/unresolved package versions.
+docker compose run --rm checks python3 scripts/checks.py --suite security \
+  --scan-root /workspace/testdata/scenarios/boot-context --output /reports/boot-security
+# Prefer this when a build-generated SBOM has already been saved in /reports.
+docker compose run --rm checks python3 scripts/checks.py --suite security \
+  --sbom /reports/project/bom.json --output /reports/project-security
+```
+
+The security profile saves Markdown/JSON summaries, diagnostics and raw
+`osv-scan.json` under `/reports/security`; export reports as above. The runner
+calls `osv-scanner scan source -r` for source or `-L` for an explicit SBOM.
+Security is opt-in and is not included in `--suite all`.
+Keep the actual exit code, diagnostics, scanner version, UTC scan time, package
+coverage and advisory IDs. Distinguish findings, scan errors and no packages
+discovered; none should become a clean security pass by omission. Do not change
+the corpus just to remove expected findings.
+The runner also fails a zero-exit scan if no versioned packages were found or
+any discovered package lacks a version/commit. Review package coverage against
+the effective build even when the runner passes. An inherited-version POM can
+produce exit 0 with only unresolved entries; the Boot fixture did exactly this.
+
+For Maven, OSV can resolve `pom.xml` transitives using public services; that graph
+can differ from the effective build and omit test dependencies. For managed/BOM,
+private, Gradle or test graphs, also scan a build-generated CycloneDX/SPDX SBOM or
+supported resolved lockfile, and compare package coverage. Merely parsing
+`build.gradle` or `build.gradle.kts` does not establish resolved dependency coverage.
+Online scans may send dependency coordinates to OSV/deps.dev or configured registries;
+honor organization policy before scanning private projects.
+
+Use the existing organization scanner when required. OSV is an additional SCA
+signal, not a replacement for license review, TLS/identity tests, container/JDK
+scans or organization approval. `--offline` requires a separately retained OSV
+database snapshot and disables Maven transitive resolution; the build-cache
+`offline` profile does not populate this advisory database. Record the database
+date/hash when replaying offline security checks.
+
+See the official [source scan](https://google.github.io/osv-scanner/usage/scan-source),
+[Java coverage](https://google.github.io/osv-scanner/supported-languages-and-lockfiles/),
+[offline mode](https://google.github.io/osv-scanner/usage/offline-mode/) and
+[pinned release](https://github.com/google/osv-scanner/releases/tag/v2.7.0).
 
 ## Single image and editor use
 

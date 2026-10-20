@@ -34,6 +34,33 @@ test engine must not silently strand the old tests.
 
 ## Evidence manifest
 
+### Optional OSV dependency check
+
+When available and permitted, use `osv-scanner scan source -r <project>` as
+additional dependency vulnerability evidence. Preserve JSON with `--format json
+--all-packages --output-file <report.json>`, actual exit status, diagnostics,
+scanner version, UTC scan date, discovered package coverage and advisory IDs.
+Findings, scanner/network errors and zero discovered packages are distinct results;
+never report any of these as a clean security pass. Review findings and remediation
+against the requested migration scope rather than silently changing the target.
+
+Maven POM transitive resolution uses external services by default, can differ from
+the effective build and omits test dependencies. Compare its package set with the
+actual resolved graph. Scan a build-generated CycloneDX/SPDX SBOM or supported
+resolved lockfile as well when the POM scan is insufficient, including managed,
+private, test and Gradle graphs. Ordinary Gradle build scripts alone do not provide
+resolved dependency coverage. Honor organization policy for sending coordinates
+to public services. Offline scans need a dated, retained advisory database;
+offline Maven resolution does not recover the full transitive graph.
+
+OSV does not itself establish the complete `security` gate. Retain existing
+organization SCA, license, TLS/identity and release requirements. See official
+[source scanning](https://google.github.io/osv-scanner/usage/scan-source),
+[supported Java inputs](https://google.github.io/osv-scanner/supported-languages-and-lockfiles/)
+and [offline behavior](https://google.github.io/osv-scanner/usage/offline-mode/).
+
+### Record actual evidence
+
 Keep all generated artifacts in `.java-modernize/` so reports do not invalidate
 their own source fingerprint. Review before committing any reports; they can
 contain private coordinates, paths, endpoints and test data. Source snippets and

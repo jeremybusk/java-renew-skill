@@ -15,6 +15,19 @@
     "url": "https://services.gradle.org/distributions/gradle-9.8.2-bin.zip",
     "sha256": "21bd5da2de49b642904077f38c0efdc7778e92b3ed0889392dca61b97e389607"
   },
+  "osv-scanner": {
+    "version": "2.7.0",
+    "linux": {
+      "amd64": {
+        "url": "https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_linux_amd64",
+        "sha256": "160c6253e2922e9e0a6a9771c5c4c40a4b3c6090b34a3cdd5e80c96cc2e4218b"
+      },
+      "arm64": {
+        "url": "https://github.com/google/osv-scanner/releases/download/v2.7.0/osv-scanner_linux_arm64",
+        "sha256": "4061ef4c021ed3c47f203b818f337e351336cc5cd67c0274fc36bd1dfc728dd7"
+      }
+    }
+  },
   "fixtures": {
     "spring_boot": "3.5.16",
     "jacoco": "0.8.14"

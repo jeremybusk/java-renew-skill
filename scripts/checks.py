@@ -75,6 +75,39 @@ def classfile_majors(paths):
     return sorted(set(majors))
 
 
+def scan_coverage(document):
+    packages = [item for result in document.get("results", []) for item in result.get("packages", [])]
+    unresolved = [item["package"]["name"] for item in packages
+                  if not (item["package"].get("version") or item["package"].get("commit"))]
+    advisories = sorted({vuln["id"] for item in packages for vuln in item.get("vulnerabilities", [])})
+    return {"packages": len(packages), "versioned_packages": len(packages) - len(unresolved),
+            "unresolved_packages": unresolved, "advisories": advisories}
+
+
+def security_scan(output, root, sbom, offline, timeout):
+    args = ["osv-scanner", "scan", "source", "--all-packages", "--format", "json",
+            "--output-file", str(output / "osv-scan.json")]
+    args += ["-L", str(sbom)] if sbom else ["-r", str(root)]
+    if offline:
+        args.append("--offline")
+    raw = output / "osv-scan.json"
+    raw.unlink(missing_ok=True)
+    record = run_command("osv-scan", args, output, timeout=timeout)
+    record["input"] = str(sbom or root)
+    try:
+        coverage = scan_coverage(json.loads(raw.read_text()))
+        record.update(coverage)
+        if coverage["advisories"]:
+            record.update(status="failed", detail="Known vulnerability findings; review osv-scan.json and scan diagnostics.")
+        elif not coverage["versioned_packages"] or coverage["unresolved_packages"]:
+            record.update(status="failed", detail="Incomplete package/version coverage; scan a build-generated SBOM or resolved lockfile.")
+        elif record["exit_code"] != 0:
+            record["detail"] = "Scanner failed; inspect diagnostics."
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as error:
+        record.update(status="failed", detail=f"Missing or invalid scanner report: {error}")
+    return record
+
+
 def versions(output, timeout):
     results = []
     for major in (8, 11, 17, 21, 25):
@@ -84,7 +117,8 @@ def versions(output, timeout):
         if expected not in text:
             record.update(status="failed", detail=f"Expected Java {major} version output")
         results.append(record)
-    for name, command in (("maven", "mvn"), ("gradle8", "gradle8"), ("gradle9", "gradle9")):
+    for name, command in (("maven", "mvn"), ("gradle8", "gradle8"), ("gradle9", "gradle9"),
+                          ("osv-scanner", "osv-scanner")):
         record = run_command(name, [command, "--version"], output, env=environment(21), timeout=timeout)
         if LOCK[name]["version"] not in (output / record["log"]).read_text():
             record.update(status="failed", detail="Tool version does not match docker/toolchains.lock.json")
@@ -147,14 +181,14 @@ def fixture_build(case, major, output, offline, timeout):
         return record
 
 
-def write_report(output, results):
+def write_report(output, results, scope=None):
     passed = all(record["status"] == "passed" for record in results)
     report = {"status": "passed" if passed else "failed",
               "created_at": dt.datetime.now(dt.timezone.utc).isoformat(), "checks": results,
               "environment": {"python": platform.python_version(), "platform": platform.platform(),
                               "architecture": platform.machine(),
                               "toolchain_lock_sha256": hashlib.sha256((ROOT / "docker/toolchains.lock.json").read_bytes()).hexdigest()},
-              "scope": "Repository tests and deterministic fixture build smokes; no AI agent execution or production certification."}
+              "scope": scope or "Repository tests and deterministic fixture build smokes; no AI agent execution or production certification."}
     (output / "results.json").write_text(json.dumps(report, indent=2) + "\n")
     lines = ["# Validation checks", "", f"Result: **{report['status']}**", "",
              "| Check | Result | Seconds | Evidence |", "| --- | --- | --- | --- |"]
@@ -166,7 +200,14 @@ def write_report(output, results):
         lines.extend(["", "## Failures", ""])
         for record in details:
             lines.append(f"- {record['name']}: " + record["detail"].replace("\n", " "))
-    lines.extend(["", report["scope"], "", "See results.json and the per-build JUnit XML for counts and classfile checks.", ""])
+    for record in results:
+        if "versioned_packages" in record:
+            lines.extend(["", "## Dependency scan coverage", "",
+                          f"- Package entries: {record['packages']}; versioned: {record['versioned_packages']}; unresolved: {len(record['unresolved_packages'])}.",
+                          "- Unresolved: " + (", ".join(sorted(set(record["unresolved_packages"]))) or "none") + ".",
+                          "- Advisory IDs: " + (", ".join(record["advisories"]) or "none reported") + ".",
+                          "", "[Raw scan JSON](osv-scan.json)"])
+    lines.extend(["", report["scope"], "", "See results.json and linked evidence for full details.", ""])
     (output / "summary.md").write_text("\n".join(lines))
     print(f"{report['status']}: {len(results)} checks; report: {output / 'summary.md'}", flush=True)
     return 0 if passed else 1
@@ -174,16 +215,22 @@ def write_report(output, results):
 
 def main(argv=None):
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--suite", choices=("versions", "unit", "builds", "all"), default="all")
+    parser.add_argument("--suite", choices=("versions", "unit", "builds", "security", "all"), default="all")
+    parser.add_argument("--scan-root", type=Path, default=ROOT / "testdata/scenarios", help="security suite source scope")
+    parser.add_argument("--sbom", type=Path, help="security suite: scan this build-generated SBOM instead of source")
     parser.add_argument("--java", type=int, choices=(17, 21, 25), action="append", help="build lanes; default: 17, 21 and 25")
     parser.add_argument("--output", type=Path, default=Path("/reports"))
-    parser.add_argument("--offline", action="store_true", help="fail if Maven/Gradle dependencies are not cached")
+    parser.add_argument("--offline", action="store_true", help="require cached Maven/Gradle dependencies or an existing OSV database")
     parser.add_argument("--timeout", type=int, default=600, help="per-command timeout in seconds")
     args = parser.parse_args(argv)
     if args.timeout <= 0:
         parser.error("--timeout must be positive")
     args.output.mkdir(parents=True, exist_ok=True)
     results = []
+    if args.suite == "security":
+        result = security_scan(args.output.resolve(), args.scan_root.resolve(), args.sbom.resolve() if args.sbom else None,
+                               args.offline, args.timeout)
+        return write_report(args.output, [result], "OSV dependency scan with package/version coverage checks; not the full organization security gate. Compare coverage with the effective build graph.")
     if args.suite in ("versions", "all"):
         results.extend(versions(args.output, args.timeout))
         if any(record["status"] == "failed" for record in results):
