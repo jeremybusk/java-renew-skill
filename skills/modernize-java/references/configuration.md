@@ -124,14 +124,28 @@ files with their relative paths. `exclude_dirs` matches directory basenames
 at any depth; replace the default array when needed.
 
 The scanner always excludes `.git`, `.hg`, `.svn`, `.aws`, `.ssh`, `.codex`,
-`.agents`, and `.java-modernize`. It ignores noncandidate suffixes, does not obey
-gitignore, follows no discovered symlinks, and does not evaluate build scripts.
-An explicitly supplied root may itself resolve through a symlink. UTF-8 source
-and build/configuration candidates are hashed; Maven metadata is **declared**,
-not an effective POM or resolved graph. Directory errors, symlinks, malformed
-POMs, other encodings, and configured size/count limits produce warnings and an
-incomplete scan. Review elsewhere and narrow scope explicitly, or fix the cause.
+`.agents`, and `.java-modernize`. It does not obey gitignore, follows no discovered
+symlinks, and does not evaluate build scripts. An explicitly supplied root may
+itself resolve through a symlink. Every scoped regular file is fingerprinted by
+content and executable permission, including launchers, lockfiles, extensionless
+service descriptors, database migrations and binary resources. Recognized UTF-8
+source/build/configuration files additionally receive lexical triage; other files
+are opaque resources and are never decoded. Maven metadata is **declared**, not
+an effective POM or resolved graph.
+
+Size/count limits apply to all scoped files, including opaque resources. Directory
+errors, symlinks, malformed POMs, unsupported encodings in text candidates, and
+exceeded limits produce warnings and an incomplete scan. Common generated/cache
+directories are excluded by default, including `target`, `build`, `.gradle`,
+`.m2` and `__pycache__`. Review large/generated resources elsewhere and narrow
+scope explicitly, or increase the configured limits within the schema's bounds.
 Do not suppress a warning by presenting a partial scan as repository coverage.
+
+Version 1.2 broadens the fingerprint contract. Earlier inventories, evidence and
+handoffs must be regenerated after reviewing the newly covered inputs. JSON
+policy, handoff and evidence inputs must be regular files, not symlinks or special
+files, and are limited to 16 MiB. The helper checks the opened file's type before
+reading; commands embedded in inputs are never executed.
 
 ## Evidence exceptions
 

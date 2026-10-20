@@ -64,6 +64,8 @@ Matching `.json` files preserve decisions, sources, next steps and policy/source
 fingerprints. Validation additionally produces `evidence.json` and linked logs.
 Reports clearly distinguish implementation completion, verification, blockers and
 waivers. See the [phase contract](skills/modernize-java/references/phases.md).
+Recorded blockers and empty/incomplete scans force a blocked report even when a
+handoff claims completion.
 
 ## Set target versions and overrides
 
@@ -146,8 +148,12 @@ It preserves existing corporate conventions and records unsupported combinations
 instead of forcing arbitrary major upgrades. Tool and recipe licenses are checked
 separately; Java 25 recipe use is optional.
 
-The scanner is bounded lexical triage, not a dependency resolver or complete
-static analyzer. The evidence gate checks self-declared results and artifact
+The scanner fingerprints every file within configured scope, including wrappers,
+lockfiles, binary resources and executable permissions, and performs bounded
+lexical triage on recognized text. It is not a dependency resolver or complete
+static analyzer. Version 1.2 expands this fingerprint contract; review the newly
+covered inputs and regenerate earlier inventories/evidence/handoffs.
+The evidence gate checks self-declared results and artifact
 integrity, not test truth, signed provenance, or production certification. Real
 compiler/tests and trusted CI remain necessary. This repository supplies a
 reusable engineering workflow, not a vendor support contract or support SLA.

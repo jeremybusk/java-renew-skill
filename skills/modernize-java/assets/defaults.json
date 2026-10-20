@@ -21,6 +21,8 @@
       "target",
       "build",
       ".gradle",
+      ".m2",
+      "__pycache__",
       "node_modules",
       "vendor",
       ".idea",

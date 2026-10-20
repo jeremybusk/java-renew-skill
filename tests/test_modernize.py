@@ -3,11 +3,13 @@
 import datetime as dt
 import importlib.util
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 SKILL = Path(__file__).resolve().parents[1] / "skills" / "modernize-java"
 SCRIPT = SKILL / "scripts" / "modernize.py"
@@ -164,6 +166,62 @@ class PolicyTests(ProjectCase):
 
 
 class InventoryTests(ProjectCase):
+    def test_wrappers_locks_and_opaque_resources_invalidate_evidence(self):
+        inputs = {
+            "mvnw": b"#!/bin/sh\nexec mvn verify\n",
+            "gradlew": b"#!/bin/sh\nexec gradle test\n",
+            "gradle.lockfile": b"example:library:1.0=runtimeClasspath\n",
+            "src/main/resources/META-INF/services/example.Provider": b"example.ProviderImpl\n",
+            "src/main/resources/db/migration/V1__schema.sql": b"CREATE TABLE orders (id INT);\n",
+            "gradle/wrapper/gradle-wrapper.jar": b"PK\x00\xffopaque wrapper bytes",
+        }
+        for relative, data in inputs.items():
+            path = self.root / relative
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path.write_bytes(data)
+        self.assertTrue(self.snapshot()["scan_complete"])
+        for relative, data in inputs.items():
+            with self.subTest(path=relative):
+                evidence = self.passing_evidence()
+                (self.root / relative).write_bytes(data + b"changed")
+                result = m.check_evidence(self.root, self.policy, evidence)
+                self.assertTrue(any("inventory changed" in error for error in result["errors"]))
+
+    @unittest.skipUnless(os.name == "posix", "POSIX executable permissions")
+    def test_launcher_permission_changes_invalidate_evidence(self):
+        launcher = self.write("mvnw", "#!/bin/sh\n")
+        launcher.chmod(0o644)
+        evidence = self.passing_evidence()
+        launcher.chmod(0o755)
+        self.assertEqual(m.check_evidence(self.root, self.policy, evidence)["status"], "blocked")
+
+    def test_unknown_symlinks_and_oversized_resources_mark_incomplete(self):
+        target = self.write(".java-modernize/private", "private data")
+        (self.root / "linked-resource").symlink_to(target)
+        self.assertFalse(self.snapshot()["scan_complete"])
+        (self.root / "linked-resource").unlink()
+        self.policy["scope"]["max_file_bytes"] = 1024
+        self.write("src/main/resources/opaque.bin", "x" * 1025)
+        self.assertFalse(self.snapshot()["scan_complete"])
+
+    @unittest.skipUnless(hasattr(os, "O_NOFOLLOW"), "requires no-follow file opens")
+    def test_file_replaced_by_symlink_during_open_is_rejected(self):
+        target = self.write(".java-modernize/private", "never read private data")
+        candidate = self.write("Race.java", "class Race {}")
+        real_open = os.open
+
+        def replace_then_open(path, flags):
+            if Path(path) == candidate:
+                candidate.unlink()
+                candidate.symlink_to(target)
+            return real_open(path, flags)
+
+        with mock.patch.object(m.os, "open", side_effect=replace_then_open):
+            snapshot = self.snapshot()
+        self.assertFalse(snapshot["scan_complete"])
+        self.assertNotIn("never read private data", json.dumps(snapshot))
+        self.assertNotIn("Race.java", {item["path"] for item in snapshot["files"]})
+
     def test_declared_metadata_and_deterministic_fingerprint(self):
         first, second = self.snapshot(), self.snapshot()
         self.assertEqual(first, second)
@@ -244,6 +302,20 @@ class InventoryTests(ProjectCase):
 
 
 class EvidenceTests(ProjectCase):
+    def test_opaque_resources_alone_do_not_establish_usable_project_inputs(self):
+        self.write("README.md", "Project documentation only")
+        self.policy["scope"]["include"] = ["README.md"]
+        snapshot = self.snapshot()
+        self.assertTrue(snapshot["scan_complete"])
+        self.assertEqual(len(snapshot["files"]), 1)
+        result = m.check_evidence(self.root, self.policy, self.passing_evidence())
+        self.assertTrue(any("no recognized" in error for error in result["errors"]))
+        handoff = m.handoff_template("execute", snapshot, self.policy)
+        handoff["status"] = "complete"
+        report, code = m.render_report(self.root, self.policy, handoff)
+        self.assertEqual(code, 1)
+        self.assertIn("Status: **blocked**", report)
+
     def finding(self, kind="vulnerability", status="open"):
         return {"id": "SYNTHETIC-ADVISORY", "kind": kind, "component": "example:legacy", "version": "1.0",
                 "status": status, "replacement": "", "summary": "Synthetic finding, not a real advisory.", "artifacts": []}
@@ -391,6 +463,40 @@ class EvidenceTests(ProjectCase):
 
 
 class ReportAndCliTests(ProjectCase):
+    def test_completion_cannot_hide_blockers_or_empty_inventory(self):
+        for stage in m.STAGES:
+            with self.subTest(stage=stage):
+                handoff = m.handoff_template(stage, self.snapshot(), self.policy)
+                handoff.update(status="complete", blockers=["Required environment unavailable"])
+                report, code = m.render_report(self.root, self.policy, handoff, self.passing_evidence())
+                self.assertEqual(code, 1)
+                self.assertIn("Status: **blocked**", report)
+        self.policy["scope"]["include"] = ["missing/**"]
+        handoff = m.handoff_template("execute", self.snapshot(), self.policy)
+        handoff["status"] = "complete"
+        report, code = m.render_report(self.root, self.policy, handoff)
+        self.assertEqual(code, 1)
+        self.assertIn("Status: **blocked**", report)
+
+    def test_json_inputs_reject_special_files_symlinks_and_oversized_data(self):
+        target = self.write_json(".java-modernize/policy.json", {})
+        link = self.root / "linked.json"
+        link.symlink_to(target)
+        with self.assertRaises((OSError, ValueError)):
+            m.load_json(link)
+        oversized = self.write(".java-modernize/oversized.json", " " * (16 * 1024 * 1024) + "{}")
+        with self.assertRaises(ValueError):
+            m.load_json(oversized)
+        (self.root / ".java-modernize.json").symlink_to(self.root / "missing-policy.json")
+        result = self.cli("config")
+        self.assertEqual(result.returncode, 2, "A broken project policy link must not fall back to defaults")
+        (self.root / ".java-modernize.json").unlink()
+        if hasattr(os, "mkfifo"):
+            fifo = self.root / "fifo.json"
+            os.mkfifo(fifo)
+            result = self.cli("config", "--override", str(fifo))
+            self.assertEqual(result.returncode, 2)
+
     def test_each_stage_has_a_continuation_handoff(self):
         for stage in m.STAGES:
             handoff = m.handoff_template(stage, self.snapshot(), self.policy)

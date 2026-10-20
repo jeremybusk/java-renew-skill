@@ -17,10 +17,14 @@ docker compose cp checks:/reports/. ./check-reports
 Open `check-reports/summary.md`. JSON results, complete command logs, actual
 version output and JUnit XML are saved alongside it. Any failed command, missing
 test discovery, incorrect bytecode or version mismatch produces a nonzero exit.
+The shared JUnit reader supports nested/namespaced suites, checks counters against
+contained testcases, and rejects contradictory/negative counts, DTD/entity
+declarations and reports larger than 16 MiB. The runners reject all-skipped runs.
 The workspace is mounted read-only; builds use disposable copies. Maven and
 Gradle caches and reports use persistent named volumes. The process runs as
 the devcontainer's non-root `vscode` user, without a Docker socket mount.
-Results also record Python, platform, architecture and the toolchain lock hash.
+Results also record Python, platform, architecture, runner/reader hashes and the
+toolchain lock hash.
 CI runs this same matrix and uploads the reports.
 
 The default run checks:

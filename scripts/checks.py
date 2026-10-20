@@ -16,6 +16,11 @@ import tempfile
 import time
 import xml.etree.ElementTree as ET
 
+try:
+    from junit_reports import read_test_report
+except ModuleNotFoundError:
+    from scripts.junit_reports import read_test_report
+
 ROOT = Path(__file__).resolve().parents[1]
 LOCK = json.loads((ROOT / "docker/toolchains.lock.json").read_text())
 
@@ -54,12 +59,10 @@ def run_command(name, args, output, cwd=ROOT, env=None, timeout=600):
 def test_counts(paths):
     counts = {"tests": 0, "failures": 0, "errors": 0, "skipped": 0}
     for path in paths:
-        root = ET.parse(path).getroot()
-        suites = [root] if root.tag == "testsuite" else root.findall("testsuite")
-        for suite in suites:
-            for key in counts:
-                counts[key] += int(suite.get(key, "0"))
-    if counts["tests"] == 0 or counts["failures"] or counts["errors"]:
+        observed, _ = read_test_report(path)
+        for key in counts:
+            counts[key] += observed[key]
+    if counts["tests"] <= counts["skipped"] or counts["failures"] or counts["errors"]:
         raise ValueError(f"Tests missing or failed: {counts}")
     return counts
 
@@ -193,6 +196,8 @@ def write_report(output, results, scope=None):
               "created_at": dt.datetime.now(dt.timezone.utc).isoformat(), "checks": results,
               "environment": {"python": platform.python_version(), "platform": platform.platform(),
                               "architecture": platform.machine(),
+                              "check_runner_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+                              "junit_reader_sha256": hashlib.sha256(Path(__file__).with_name("junit_reports.py").read_bytes()).hexdigest(),
                               "toolchain_lock_sha256": hashlib.sha256((ROOT / "docker/toolchains.lock.json").read_bytes()).hexdigest()},
               "scope": scope or "Repository tests and deterministic fixture build smokes; no AI agent execution or production certification."}
     (output / "results.json").write_text(json.dumps(report, indent=2) + "\n")

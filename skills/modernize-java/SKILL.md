@@ -3,7 +3,7 @@ name: modernize-java
 description: Assess, plan, and implement Java 8 through Java 25 migrations, including Maven/Gradle builds, framework and dependency compatibility, Jakarta transitions, tests, containers, and runtime behavior. Use for Java upgrades or failed migrations; also supports libraries retaining an older bytecode baseline.
 license: Apache-2.0
 metadata:
-  version: "1.1.0"
+  version: "1.2.0"
   runtime: "Optional helpers: Python 3.10+. Migration: project-appropriate JDKs and build tools."
 ---
 
@@ -56,8 +56,9 @@ python3 <skill>/scripts/modernize.py config --root <project>
 python3 <skill>/scripts/modernize.py inventory --root <project>
 ```
 
-Inventory is bounded lexical triage: comments can match; no matches is not a clean
-bill of health. Read its warnings. It does not execute builds, resolve dependency
+Inventory fingerprints all scoped files and applies bounded lexical triage to
+recognized text: comments can match; no matches is not a clean bill of health.
+Read its warnings. It does not execute builds, resolve dependency
 graphs, evaluate Gradle, or inspect binary/shaded artifacts. Follow imports,
 parents, modules, included builds, profiles, catalogs, lockfiles, generated code,
 CI jobs, startup scripts, images, agents, and vendor deployment configuration.

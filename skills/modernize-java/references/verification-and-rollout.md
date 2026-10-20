@@ -100,16 +100,19 @@ The gate recomputes the current bounded inventory and effective policy, compares
 both hashes to the manifest, verifies declared Java majors, required statuses,
 artifact hashes and UTC waiver expiry. Changed included source/config, policy,
 missing artifacts, absent checks, stale hashes, a failed/not-run status or an
-incomplete/empty inventory block the gate. A valid explicit waiver produces
+incomplete/empty inventory block the gate. A scope containing only opaque
+resources, with no recognized source/build/configuration inputs, also blocks it.
+A valid explicit waiver produces
 `passed_with_waivers`, never an unqualified pass. It checks only `required_gates`;
 list any removed gates and do not bury a relevant failure in an optional check.
 
 This is **local consistency checking**, not signed attestation, test execution,
 build provenance, or tamper resistance against an author who can rewrite the
 manifest and artifacts. Trust CI identities and approved provenance tooling for
-those assurances. The source fingerprint covers selected UTF-8/config candidates,
-not all repository bytes, external parents, repository servers, environment,
-untracked binary dependencies or container layers. Record resolved external inputs
+those assurances. The source fingerprint covers all files within configured scope,
+including opaque resources and executable permissions. Excluded directories/files,
+external parents, repository servers, environment, external binary dependencies
+and container layers remain outside that fingerprint. Record resolved external inputs
 and final artifact/image digests separately. Reproduce on a clean trusted runner.
 
 ## Delivery and rollout

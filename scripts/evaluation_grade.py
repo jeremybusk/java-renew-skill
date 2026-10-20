@@ -12,6 +12,11 @@ import sys
 import tempfile
 import xml.etree.ElementTree as ET
 
+try:
+    from junit_reports import read_test_report
+except ModuleNotFoundError:
+    from scripts.junit_reports import read_test_report
+
 ROOT = Path(__file__).resolve().parent.parent
 STAGES = {"assess": "01-assessment", "plan": "02-plan", "execute": "03-execution",
           "validate": "04-validation", "summary": "05-summary"}
@@ -106,12 +111,10 @@ def build_project(source, original, output, metadata, label, java, restore_tests
             if not (("surefire-reports" in path.parts and "target" in path.parts) or
                     ("test-results" in path.parts and "build" in path.parts)):
                 continue
-            document = ET.parse(path).getroot()
-            suites = [document] if document.tag == "testsuite" else document.findall("testsuite")
-            for suite in suites:
-                for key in counts:
-                    counts[key] += int(suite.get(key, "0"))
-                classnames.update(test.get("classname", "") for test in suite.findall("testcase"))
+            observed, observed_classes = read_test_report(path)
+            for key in counts:
+                counts[key] += observed[key]
+            classnames.update(observed_classes)
             destination = output / f"{label}-{len(reports)}-{path.name}"
             shutil.copy2(path, destination)
             reports.append(destination.name)
@@ -371,6 +374,7 @@ def grade_trial(output, trial, image, maven_cache):
         command += ["--mount", f"type=bind,src={work},dst=/submission,readonly",
                     "--mount", f"type=bind,src={original},dst=/original,readonly",
                     "--mount", f"type=bind,src={Path(__file__).resolve()},dst=/grader.py,readonly",
+                    "--mount", f"type=bind,src={Path(__file__).with_name('junit_reports.py').resolve()},dst=/junit_reports.py,readonly",
                     "--mount", f"type=bind,src={trial / 'trial.json'},dst=/trial.json,readonly",
                     "--mount", f"type=bind,src={destination},dst=/results", image, "python3", "/grader.py", "build"]
         with (destination / "container.log").open("w") as stream:
@@ -391,6 +395,7 @@ def grade_trial(output, trial, image, maven_cache):
     save(trial / "review-template.json", {"reviewer": "", "criteria": [
         {"criterion": criterion, "status": "pending", "evidence": ""} for criterion in result["semantic_criteria"]]})
     result["grader_sha256"] = sha(Path(__file__))
+    result["junit_reader_sha256"] = sha(Path(__file__).with_name("junit_reports.py"))
     result["agent_seconds"] = round(sum(phase["seconds"] for phase in metadata["phases"]), 3)
     result["agent_usage"] = {key: sum(usage.get(key, 0) for phase in metadata["phases"]
                                      for usage in phase.get("usage", []))

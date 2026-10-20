@@ -55,6 +55,37 @@ class CheckRunnerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             checks.classfile_majors([])
 
+    def test_junit_nested_namespaced_and_attribute_free_reports(self):
+        report = self.work / "tests.xml"
+        report.write_text('''<testsuites xmlns="urn:junit" tests="3" skipped="1">
+          <testsuites><testsuite tests="2" skipped="1">
+            <testcase classname="example.One"/><testcase classname="example.One"><skipped/></testcase>
+          </testsuite></testsuites>
+          <testsuite><testcase classname="example.Two"/></testsuite>
+        </testsuites>''')
+        self.assertEqual(checks.test_counts([report]), dict(tests=3, failures=0, errors=0, skipped=1))
+        _, classes = checks.read_test_report(report)
+        self.assertEqual(classes, {"example.One", "example.Two"})
+
+    def test_junit_rejects_skipped_contradictory_and_unsafe_reports(self):
+        report = self.work / "tests.xml"
+        samples = [
+            '<testsuite tests="2" skipped="2"/>',
+            '<testsuite tests="1" failures="-1"/>',
+            '<testsuite tests="1" skipped="2"/>',
+            '<testsuite tests="1" failures="0"><testcase><failure/></testcase></testsuite>',
+            '<testsuite tests="2"><testcase/></testsuite>',
+            '<testsuites tests="3"><testsuite tests="1"/></testsuites>',
+            '<testsuite><testcase><skipped/><failure/></testcase></testsuite>',
+            '<report tests="3"/>',
+            '<!DOCTYPE testsuite [<!ENTITY x "data">]><testsuite tests="1"/>',
+        ]
+        for content in samples:
+            with self.subTest(content=content):
+                report.write_text(content)
+                with self.assertRaises(ValueError):
+                    checks.test_counts([report])
+
     def test_command_failures_and_timeouts_are_preserved_in_reports(self):
         failure = checks.run_command("failure", [sys.executable, "-c", "raise SystemExit(3)"], self.work)
         self.assertEqual((failure["status"], failure["exit_code"]), ("failed", 3))

@@ -3,6 +3,7 @@
 
 import argparse
 import copy
+from contextlib import contextmanager
 import datetime as dt
 import fnmatch
 import hashlib
@@ -18,8 +19,11 @@ ASSETS = Path(__file__).resolve().parents[1] / "assets"
 HARD_EXCLUDES = {".git", ".hg", ".svn", ".aws", ".ssh", ".codex", ".agents", ".java-modernize"}
 SUFFIXES = {".java", ".xml", ".gradle", ".kts", ".kt", ".groovy", ".scala", ".sbt",
             ".toml", ".properties", ".yml", ".yaml", ".sh", ".bat", ".cmd", ".ps1",
-            ".conf", ".config", ".cfg", ".json", ".mf", ".dockerfile"}
-NAMES = {"Dockerfile", "Jenkinsfile", "Makefile", ".java-version", ".tool-versions", ".sdkmanrc"}
+            ".conf", ".config", ".cfg", ".json", ".mf", ".dockerfile", ".lockfile", ".lock",
+            ".sql", ".jsp", ".jspx", ".tag", ".tld", ".xhtml", ".fxml", ".wsdl", ".xsd"}
+NAMES = {"Dockerfile", "Jenkinsfile", "Makefile", ".java-version", ".tool-versions", ".sdkmanrc",
+         "mvnw", "gradlew"}
+MAX_JSON_BYTES = 16 * 1024 * 1024
 STAGES = {"assess": "01-assessment", "plan": "02-plan", "execute": "03-execution",
           "validate": "04-validation", "summary": "05-summary"}
 REMEDIATION_SCOPES = ("runtime", "test", "build", "processors", "agents", "containers")
@@ -70,9 +74,29 @@ def digest(value):
                                      ensure_ascii=True).encode()).hexdigest()
 
 
+@contextmanager
+def open_regular(path):
+    """Reject special files before reading, including a leaf replaced during open."""
+    path = Path(path)
+    if path.is_symlink():
+        raise ValueError("symlink file is unsupported")
+    flags = os.O_RDONLY | getattr(os, "O_BINARY", 0)
+    flags |= getattr(os, "O_NOFOLLOW", 0) | getattr(os, "O_NONBLOCK", 0)
+    descriptor = os.open(path, flags)
+    try:
+        if not stat.S_ISREG(os.fstat(descriptor).st_mode) or path.is_symlink():
+            raise ValueError("expected a regular file")
+        stream = os.fdopen(descriptor, "rb")
+    except BaseException:
+        os.close(descriptor)
+        raise
+    with stream:
+        yield stream
+
+
 def file_digest(path):
     result = hashlib.sha256()
-    with path.open("rb") as stream:
+    with open_regular(path) as stream:
         for block in iter(lambda: stream.read(1024 * 1024), b""):
             result.update(block)
     return result.hexdigest()
@@ -90,8 +114,11 @@ def load_json(path):
     def invalid_number(_):
         raise ValueError("non-finite JSON number")
 
-    with Path(path).open(encoding="utf-8") as stream:
-        return json.load(stream, object_pairs_hook=pairs, parse_constant=invalid_number)
+    with open_regular(path) as stream:
+        data = stream.read(MAX_JSON_BYTES + 1)
+    if len(data) > MAX_JSON_BYTES:
+        raise ValueError("JSON input exceeds 16 MiB limit")
+    return json.loads(data.decode("utf-8"), object_pairs_hook=pairs, parse_constant=invalid_number)
 
 
 def validate(value, schema, location="$"):
@@ -145,7 +172,7 @@ def resolve_policy(root, overrides):
     schema = load_json(ASSETS / "config.schema.json")
     policy = load_json(ASSETS / "defaults.json")
     project = root / ".java-modernize.json"
-    paths = ([project] if project.exists() else []) + [Path(path) for path in overrides]
+    paths = ([project] if project.exists() or project.is_symlink() else []) + [Path(path) for path in overrides]
     for path in paths:
         layer = load_json(path)
         validate(layer, schema)
@@ -196,7 +223,13 @@ def kind(path):
         return "ant"
     if path.suffix == ".sbt":
         return "sbt"
-    return "source" if path.suffix in {".java", ".kt", ".scala", ".groovy"} else "configuration"
+    if path.suffix in {".java", ".kt", ".scala", ".groovy"}:
+        return "source"
+    return "configuration" if text_candidate(path) else "resource"
+
+
+def text_candidate(path):
+    return path.suffix.lower() in SUFFIXES or path.name in NAMES or path.name.startswith("Dockerfile.")
 
 
 def pom_metadata(content):
@@ -233,6 +266,7 @@ def inventory(root, policy):
         warn(os.path.relpath(error.filename or root, root), "directory could not be read")
 
     stopped = False
+    considered = 0
     for parent, dirs, names in os.walk(root, followlinks=False, onerror=walk_error):
         parent = Path(parent)
         kept = []
@@ -248,14 +282,13 @@ def inventory(root, policy):
         for name in sorted(names):
             path = parent / name
             relative = path.relative_to(root).as_posix()
-            if not (path.suffix.lower() in SUFFIXES or name in NAMES or name.startswith("Dockerfile.")):
-                continue
             if not matches(relative, scope["include"]) or matches(relative, scope["exclude"]):
                 continue
-            if len(files) >= scope["max_files"]:
+            if considered >= scope["max_files"]:
                 warn(relative, "file count limit exceeded")
                 stopped = True
                 break
+            considered += 1
             try:
                 info = path.lstat()
                 if not stat.S_ISREG(info.st_mode):
@@ -264,14 +297,18 @@ def inventory(root, policy):
                 if info.st_size > scope["max_file_bytes"]:
                     warn(relative, "file size limit exceeded")
                     continue
-                with path.open("rb") as stream:
+                with open_regular(path) as stream:
+                    info = os.fstat(stream.fileno())
                     data = stream.read(scope["max_file_bytes"] + 1)
                 if len(data) > scope["max_file_bytes"]:
                     warn(relative, "file size limit exceeded during read")
                     continue
                 item = {"path": relative, "sha256": hashlib.sha256(data).hexdigest(),
-                        "bytes": len(data), "kind": kind(path)}
+                        "bytes": len(data), "kind": kind(path),
+                        "executable": bool(info.st_mode & 0o111)}
                 files.append(item)
+                if not text_candidate(path):
+                    continue
                 content = data.decode("utf-8-sig")
                 if "\x00" in content:
                     raise ValueError("binary data in text candidate")
@@ -380,6 +417,8 @@ def check_evidence(root, policy, evidence):
         errors.append("evidence target does not match policy")
     if not current["files"] or not current["scan_complete"]:
         errors.append("inventory is empty or incomplete; resolve warnings and scope")
+    elif not any(item["kind"] != "resource" for item in current["files"]):
+        errors.append("inventory has no recognized source/build/configuration inputs; review root and scope")
     waivers = {item["gate"]: item for item in policy["waivers"]}
     today = dt.datetime.now(dt.timezone.utc).date()
     for gate in policy["required_gates"]:
@@ -433,7 +472,9 @@ def render_report(root, policy, handoff, evidence=None):
     stage, status = handoff["stage"], handoff["status"]
     if stage in {"validate", "summary"} and status == "complete" and gate is None:
         raise ValueError("complete validate/summary reports require --evidence; otherwise use in_progress or blocked")
-    if (gate and gate["errors"]) or not snapshot["scan_complete"]:
+    has_inputs = any(item["kind"] != "resource" for item in snapshot["files"])
+    if ((gate and gate["errors"]) or not snapshot["scan_complete"] or not has_inputs or
+            handoff["blockers"]):
         status = "blocked"
     label = "complete with waivers" if status == "complete" and gate and gate["waivers"] else status
     lines = [f"# Java modernization — {stage}", "", f"Status: **{label}**", "",
@@ -488,10 +529,15 @@ def render_report(root, policy, handoff, evidence=None):
                   "The gate checks declared evidence and artifact integrity; review actual test results and release approvals.", ""])
     lines.extend(["## Handoff integrity", "", f"- Inventory: `{snapshot['inventory_sha256']}`",
                   f"- Policy: `{digest(policy)}`",
-                  f"- Scoped candidate files: {len(snapshot['files'])}; lexical signals: {len(snapshot['findings'])}.",
+                  f"- Scoped files: {len(snapshot['files'])}; lexical signals: {len(snapshot['findings'])}.",
                   "- Fingerprints cover the configured scan scope, not all external build/deployment inputs.", ""])
-    if snapshot["warnings"]:
-        section("Inventory warnings", [f"`{item['path']}`: {item['reason']}" for item in snapshot["warnings"]], "")
+    inventory_warnings = [f"`{item['path']}`: {item['reason']}" for item in snapshot["warnings"]]
+    if not snapshot["files"]:
+        inventory_warnings.append("Inventory is empty; review the project root and configured scope.")
+    elif not has_inputs:
+        inventory_warnings.append("No recognized source/build/configuration inputs; review the project root and configured scope.")
+    if inventory_warnings:
+        section("Inventory warnings", inventory_warnings, "")
     if stage == "assess" and snapshot["findings"]:
         lines.extend(["## Automated triage signals", "", "Review these candidates; they are not confirmed defects.", "",
                       "| Severity | Rule | Location | Review action |", "| --- | --- | --- | --- |"])

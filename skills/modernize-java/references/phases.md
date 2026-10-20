@@ -104,8 +104,10 @@ Use the same overrides throughout. For `plan`, `execute`, `validate`, and `summa
 evidence exists. Set `status` to `in_progress`, `blocked`, or `complete` based on
 actual work. A completed assessment or plan is not a verified migration.
 
-Validation/summary cannot be rendered `complete` without evidence. Failed evidence
-or incomplete scanning renders a **blocked** report (exit 1). Valid explicit
+Validation/summary cannot be rendered `complete` without evidence. Failed evidence,
+an empty/incomplete scan, a scope without recognized source/build/configuration
+inputs, or any recorded blockers renders a **blocked** report
+(exit 1), even if the supplied handoff claims completion. Valid explicit
 waivers render **complete with waivers**. Partial summaries can render without
 evidence but make no verified execution claim. Rendering a stale handoff fails
 with exit 2; review the changes before generating a new skeleton. Never overwrite
